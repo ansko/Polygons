@@ -2,13 +2,18 @@
 # coding utf-8
 
 import math
-
-#import numpy as np
+import random
+import copy
 
 import pprint
 pprint=pprint.PrettyPrinter(indent=4).pprint
 
-VERTICES_NUMBER = 6
+NUMBER_OF_DISKS = 100
+MAX_ATTEMPTS = 100000
+EPSILON = 10 ** (-10)
+TOUCHING_DISKS_FRACTION = 0.02
+
+VERTICES_NUMBER = 16 # must be power of 2
 VOLUME_FRACTION = 0.00033
 CUBE_EDGE_LENGTH = 10
 POLYGONAL_DISK_THICKNESS = 0.1
@@ -66,9 +71,6 @@ class Point():
         
     def printToCSG(self, f):
         f.write(self.__str__())
-        
-    #def rotateAroundAxe(self, axe):
-        
         
         
 class Vector():
@@ -131,12 +133,6 @@ class Vector():
         y = self.values['endY'] - self.values['beginY']
         z = self.values['endZ'] - self.values['beginZ']
         return (x**2 + y**2 + z**2)**0.5
-        
-
-class LineMadeOfDots():
-    def __init__(self, dot1, dot2):
-        self.values = {}
-        self.values['vector'] = Vector(dot1, dot2)
 
 
 class PlaneMadeOfDots():
@@ -174,7 +170,32 @@ class DiskMadeOfDots():
                                      0)
             self.values['facetsCenters'].append(dot)
             
-    def rotate(self, rotationMatrix)            :
+    def facets(self):
+        return self.values['facetsCenters']
+        
+    def center(self):
+        return Point(self.values['bottomCenter'].x() / 2 + self.values['topCenter'].x() / 2,
+                     self.values['bottomCenter'].y() / 2 + self.values['topCenter'].y() / 2,
+                     self.values['bottomCenter'].z() / 2 + self.values['topCenter'].z() / 2)
+        
+    def mainAxe(self):
+        dot1 = self.values['bottomCenter']
+        dot2 = self.values['topCenter']
+        return Vector(Point(0, 0, 0), Point(dot2.x() - dot1.x(),
+                                            dot2.y() - dot2.y(),
+                                            dot2.z() - dot2.z()))
+                                            
+    def bottomCenter(self):
+        return self.values['bottomCenter']
+        
+    def topCenter(self):
+        return self.values['topCenter']
+    
+    def edgeLength(self):
+        alpha = math.pi / VERTICES_NUMBER
+        return self.values['radius'] / math.cos(alpha) * math.sin(alpha)
+    
+    def rotate(self, rotationMatrix):
         M = rotationMatrix
         dot1 = self.values['bottomCenter']
         dot2 = self.values['topCenter']
@@ -226,40 +247,271 @@ class DiskMadeOfDots():
         f.write('tlo ' + solidName + ';')
         
         
-def det(M, recDepth=0):
+def det(M):
     l = len(M)
+    if l == 0 or M is None:
+        print('Error in determinant calculation!')
+        return None
     if l == 1:
         return M[0][0]
+    if l > 100:
+        print('Too big matrix for the recursive algorithm.')
+        return None
     result = 0
     for i in range(l):
         newM = []
         for j in range(1, l):
             newM.append(copy.deepcopy(M[j]))
             newM[j-1].pop(i)
-        result += ((-1) ** i) * det(newM, recDepth + 1) * M[0][i]
+        result += ((-1) ** i) * det(newM) * M[0][i]
     return result
 
 
-def boxCross(boxSize, disk):
+def boxCross(disk):
+    vectorUp = disk.topCenter() - disk.bottomCenter()
+    vectorUp /= 2
+    for i, dot in enumerate(disk.facets()):
+        vectorSide = disk.facets()[i - int(VERTICES_NUMBER * 3 / 4)] - disk.facets()[i - int(VERTICES_NUMBER / 4) ]
+        vectorSide /= 2
+        if ((dot + vectorUp + vectorSide).x() < 0 or 
+            (dot + vectorUp + vectorSide).y() < 0 or
+            (dot + vectorUp + vectorSide).z() < 0 or
+            (dot + vectorUp + vectorSide).x() > CUBE_EDGE_LENGTH or
+            (dot + vectorUp + vectorSide).y() > CUBE_EDGE_LENGTH or
+            (dot + vectorUp + vectorSide).z() > CUBE_EDGE_LENGTH):
+            return True
+        if ((dot - vectorUp + vectorSide).x() < 0 or 
+            (dot - vectorUp + vectorSide).y() < 0 or
+            (dot - vectorUp + vectorSide).z() < 0 or
+            (dot - vectorUp + vectorSide).x() > CUBE_EDGE_LENGTH or
+            (dot - vectorUp + vectorSide).y() > CUBE_EDGE_LENGTH or
+            (dot - vectorUp + vectorSide).z() > CUBE_EDGE_LENGTH):
+            return True
+        if ((dot + vectorUp - vectorSide).x() < 0 or 
+            (dot + vectorUp - vectorSide).y() < 0 or
+            (dot + vectorUp - vectorSide).z() < 0 or
+            (dot + vectorUp - vectorSide).x() > CUBE_EDGE_LENGTH or
+            (dot + vectorUp - vectorSide).y() > CUBE_EDGE_LENGTH or
+            (dot + vectorUp - vectorSide).z() > CUBE_EDGE_LENGTH):
+            return True
+        if ((dot - vectorUp - vectorSide).x() < 0 or 
+            (dot - vectorUp - vectorSide).y() < 0 or
+            (dot - vectorUp - vectorSide).z() < 0 or
+            (dot - vectorUp - vectorSide).x() > CUBE_EDGE_LENGTH or
+            (dot - vectorUp - vectorSide).y() > CUBE_EDGE_LENGTH or
+            (dot - vectorUp - vectorSide).z() > CUBE_EDGE_LENGTH):
+            return True
     return False
     
     
 def disksCross(disk1, disk2):
+    bigDistance = 2 * (POLYGONAL_DISK_RADIUS**2 + POLYGONAL_DISK_THICKNESS**2)**0.5
+    smallDistance = POLYGONAL_DISK_THICKNESS * 2
+    # check if centers are very far from each other
+    c1 = disk1.center()
+    c2 = disk2.center()
+    tc1 = disk1.topCenter()
+    tc2 = disk2.topCenter()
+    bc1 = disk1.bottomCenter()
+    bc2 = disk2.bottomCenter()
+    vector = Vector(c1, c2)
+    if vector.length() > bigDistance:
+        return False
+    if vector.length() < smallDistance:
+        return True
+    # more accurate checking
+    for i in range(len(disk1.facets())):
+        vectorUp1 = disk1.topCenter() - disk1.bottomCenter()
+        vectorUp1 /= 2
+        vectorSide1 = disk1.facets()[i - int(VERTICES_NUMBER * 3 / 4)] - disk1.facets()[i - int(VERTICES_NUMBER / 4) ]
+        vectorSide1 /= 2
+        for j in range(len(disk2.facets())):
+            vectorUp2 = disk2.topCenter() - disk2.bottomCenter()
+            vectorUp2 /= 2
+            vectorSide2 = disk2.facets()[i - int(VERTICES_NUMBER * 3 / 4)] - disk2.facets()[i - int(VERTICES_NUMBER / 4) ]
+            vectorSide2 /= 2
+            [flag, intersectionPoint] = planeLineIntersection(disk2.facets()[j], c2, disk1.facets()[i] - vectorUp1 - vectorSide1, disk1.facets()[i] + vectorUp1 + vectorSide1)
+            if flag:
+                if intersectionPoint is None:
+                    return True
+                vector = Vector(intersectionPoint, disk2.facets()[j])
+                if vector.length() > POLYGONAL_DISK_THICKNESS**2 / 4 + POLYGONAL_DISK_RADIUS**2 / 4:
+                    pass
+                    #return False
+    axeVector = tc1 - bc1          
+    for i, facet1 in enumerate(disk1.facets()):
+        if i == 0:
+            continue
+        basisVector1 = (disk1.facets()[i - 1] + disk1.facets()[i - 2] - c1 * 2) / 2
+        basisVector2 = (disk1.facets()[i] + disk1.facets()[i - 1] - c1 * 2) / 2
+        for j, facet2 in enumerate(disk2.facets()):
+            if j == 0:
+                continue
+            [alpha, beta, gamma] = decompose1(axeVector, basisVector1, basisVector2, facet2)
+            #print(alpha, beta, gamma)
+            if abs(beta) + abs(gamma) < 1:
+                #print(alpha, beta, gamma)
+                return True
     return False
+
+
+def disksCross1(disk1, disk2):
+    bigDistance = 2 * (POLYGONAL_DISK_RADIUS**2 + POLYGONAL_DISK_THICKNESS**2)**0.5
+    smallDistance = POLYGONAL_DISK_THICKNESS * 2
+    # check if centers are very far from each other
+    c1 = disk1.center()
+    c2 = disk2.center()
+    tc1 = disk1.topCenter()
+    tc2 = disk2.topCenter()
+    bc1 = disk1.bottomCenter()
+    bc2 = disk2.bottomCenter()
+    vector = Vector(c1, c2)
+    if vector.length() > bigDistance:
+        return False
+    if vector.length() < smallDistance:
+        return True
+    # more accurate checking
+    # facet-facet intersection
+    axeVector = tc1 - bc1
+    for i in range(1, len(disk1.facets()) - 1):
+        basisVector1 = disk1.facets()[i - 1] / 2 + disk1.facets()[i] / 2
+        basisVector2 = disk1.facets()[i + 1] / 2 + disk1.facets()[i] / 2
+        for facet2 in disk2.facets():
+            [alpha, beta, gamma] = decompose1(axeVector, basisVector1, basisVector2, facet2)
+            if abs(beta) + abs(gamma) < 1:
+                return True
+    # facet-top/bottom intersection
+    for j in range(1, len(disk2.facets())):
+        top = planeLineIntersection(tc1, c1 - tc1, disk2.facets()[j - 1], disk2.facets()[j])
+        if top[0] and Vector(tc1, top[1]).length() < POLYGONAL_DISK_RADIUS:
+            return True
+        bottom = planeLineIntersection(bc1, c1 - bc1, disk2.facets()[j - 1], disk2.facets()[j])
+        if bottom[0] and Vector(bc1, bottom[1]).length() < POLYGONAL_DISK_RADIUS:
+            return True
+    return False
+
+    
+def decompose1(axeVector, basisVector1, basisVector2, point):
+    x1 = axeVector.x()
+    x2 = basisVector1.x()
+    x3 = basisVector2.x()
+    y1 = axeVector.y()
+    y2 = basisVector1.y()
+    y3 = basisVector2.y()
+    z1 = axeVector.z()
+    z2 = basisVector1.z()
+    z3 = basisVector2.z()
+    a = point.x()
+    b = point.y()
+    c = point.z()
+    determinant = det([[x1, x2, x3], [y1, y2, y3], [z1, z2, z3]])
+    #print(determinant)
+    alpha = det([[a, x2, x3], [b, y2, y3], [c, z2, z3]]) / determinant
+    beta = det([[x1, a, x3], [y1, b, y3], [z1, c, z3]]) / determinant
+    gamma = det([[x1, x2, a], [y1, y2, b], [z1, z2, c]]) / determinant
+    return [alpha, beta, gamma]
+    
+
+def planeLineIntersection(pointOnPlane, normalOrigin, linePoint1, linePoint2):
+    # from english wikipedia
+    # (p - p0) * n = 0 - plane
+    # p = d * l + l0 - line
+    # d = (p0 - l0) * n / (l * n)
+    # l * n = 0 -> (p0 - l0) * n = 0 - they are parallel
+    #           -> else line lays in the plane
+    # else there is one intersection point d * l + l0
+    #
+    # l = linePoint2 - linePoint1
+    # l0 = linePoint1
+    # n = facet - diskCenter
+    # p0 = facet
+    p0 = pointOnPlane
+    l0 = linePoint1
+    l = linePoint2 - linePoint1
+    n = pointOnPlane - normalOrigin
+    denominator = l.x() * n.x() + l.y() * n.y() + l.z() * n.z()
+    numerator = (p0 - l0).x() * n.x() + (p0 - l0).y() * n.y() + (p0 - l0).z() * n.z()
+    if abs(denominator) < EPSILON and abs(numerator) < EPSILON:
+        return [True, None]
+    elif abs(denominator) < EPSILON and abs(numerator) > EPSILON:
+        return [False, None]
+    elif abs(denominator) > EPSILON:
+        intersectionPoint = l0 + l * numerator / denominator
+        return [True, intersectionPoint]
+    return True
+
+
+def orderParameter(cosTheta):
+    return (3 * cosTheta**2 - 1) / 2
+
 
 def main(cubeSize=10, diskRadius=1, diskThickness=0.1):
     f = open(FNAME, 'w')
     f.write('algebraic3d;\n')
-    f.write('solid cell = orthobrick(0, 0, 0; 10, 10, 10);\n')
+    f.write('solid cell = orthobrick(0, 0, 0; {0}, {0}, {0});\n'.format(CUBE_EDGE_LENGTH))
     f.write('tlo cell -transparent;\n')
-    disk = DiskMadeOfDots(Point(0, 0, -0.1), Point(0, 0, 0.1), 1)
-    s = 1/2**0.5
-    M = [[1, 0, 0],
-         [0, s, -s],
-         [0, s, s]]
-    disk.rotate(M)
-    disk.translate(Vector(Point(0, 0, 0), Point(5, 5, 5)))
-    disk.printToCSG(f, 'Disk1')
-    
+    disks = []
+    attempt = 0
+    while len(disks) < NUMBER_OF_DISKS:
+        attempt += 1
+        disk = DiskMadeOfDots(Point(0, 0, -POLYGONAL_DISK_THICKNESS/2), Point(0, 0, POLYGONAL_DISK_THICKNESS/2), 1)
+        alpha = random.random() * 2 * math.pi
+        beta = random.random() * 2 * math.pi
+        gamma = random.random() * 2 * math.pi
+        x = random.random() * CUBE_EDGE_LENGTH
+        y = random.random() * CUBE_EDGE_LENGTH
+        z = random.random() * CUBE_EDGE_LENGTH
+        c = math.cos(alpha)
+        s = math.sin(alpha)
+        Malpha = [[1, 0, 0],
+                  [0, c, -s],
+                  [0, s, c]]
+        disk.rotate(Malpha)
+        c = math.cos(beta)
+        s = math.sin(beta)
+        Mbeta = [[c, 0, s],
+                 [0, 1, 0],
+                 [-s, 0, c]]
+        disk.rotate(Mbeta)
+        c = math.cos(gamma)
+        s = math.sin(gamma)
+        Mgamma = [[c, -s, 0],
+                  [s, c, 0],
+                  [0, 0, 1]]
+        disk.rotate(Mgamma)
+        disk.translate(Vector(Point(0, 0, 0), Point(x, y, z)))
+        flag = 0
+        for oldDisk in disks:
+            if disksCross1(oldDisk, disk):
+                flag = 1
+                break
+        if not boxCross(disk) and flag == 0:
+            disks.append(disk)
+        print('Try {0}, ready {1} of {2}'.format(attempt, len(disks), NUMBER_OF_DISKS))
+        if attempt == MAX_ATTEMPTS:
+            break
+    for disk in disks:
+        randomnessX = 0
+        randomnessY = 0
+        randomnessZ = 0
+        x = disk.mainAxe().x()
+        y = disk.mainAxe().y()
+        z = disk.mainAxe().z()
+        l = disk.mainAxe().length()
+        cosThetaX = x / l
+        cosThetaY = y / l
+        cosThetaZ = z / l
+        randomnessX += orderParameter(cosThetaX)
+        randomnessY += orderParameter(cosThetaY)
+        randomnessZ += orderParameter(cosThetaZ)
+        disk.printToCSG(f, 'Disk1')
+    print('Randomness along X axe: {}'.format(randomnessX / len(disks)))
+    print('Randomness along Y axe: {}'.format(randomnessY / len(disks)))
+    print('Randomness along Z axe: {}'.format(randomnessZ / len(disks)))
+    diskVolume = math.pi * POLYGONAL_DISK_RADIUS**2 * POLYGONAL_DISK_THICKNESS
+    allVolume = CUBE_EDGE_LENGTH**3
+    part = len(disks) * diskVolume / allVolume
+    print('Volume part of fillers is {}'.format(part))
+
 
 main()
