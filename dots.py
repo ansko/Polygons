@@ -4,21 +4,38 @@
 import math
 import random
 import copy
+import sys
 
 import pprint
 pprint=pprint.PrettyPrinter(indent=4).pprint
 
-NUMBER_OF_DISKS = 100
-MAX_ATTEMPTS = 100000
+NUMBER_OF_DISKS = 5
+MAX_ATTEMPTS = 10000
 EPSILON = 10 ** (-10)
 TOUCHING_DISKS_FRACTION = 0.02
+RECURSION_MAX_ATTEMPTS = 10
+DEPTHS = [0 for i in range(NUMBER_OF_DISKS)]
 
 VERTICES_NUMBER = 16 # must be power of 2
 VOLUME_FRACTION = 0.00033
-CUBE_EDGE_LENGTH = 10
-POLYGONAL_DISK_THICKNESS = 0.1
-POLYGONAL_DISK_RADIUS = 1
+CUBE_EDGE_LENGTH = 300
+POLYGONAL_DISK_THICKNESS = 0.7
+POLYGONAL_DISK_RADIUS = 50
+INTERLAYER_THICKNESS = 0.3
+INTERCALATED_INTERLAYER_THICKNESS = 3.3
+INTERCALATED_STACK_NUMBER = 7 # -- should be odd
+EXFOLIATED_STACK_NUMBER = 15  # /
 FNAME = '1.geo'
+
+Ef = 232
+Em = 2
+nu = 0.3
+
+
+def delta(i, j):
+    if i == j:
+        return 1
+    return 0
 
 
 class Point():
@@ -165,8 +182,8 @@ class DiskMadeOfDots():
             diskCenter = Point(dot1.x() / 2 + dot2.x() / 2,
                                dot1.y() / 2 + dot2.y() / 2,
                                dot1.z() / 2 + dot2.z() / 2)
-            dot = diskCenter + Point(math.cos(2 * math.pi * i / VERTICES_NUMBER),
-                                     math.sin(2 * math.pi * i / VERTICES_NUMBER),
+            dot = diskCenter + Point(radius * math.cos(2 * math.pi * i / VERTICES_NUMBER),
+                                     radius * math.sin(2 * math.pi * i / VERTICES_NUMBER),
                                      0)
             self.values['facetsCenters'].append(dot)
             
@@ -244,7 +261,8 @@ class DiskMadeOfDots():
         f.write(';')
         (dot2 - diskCenter).printToCSG(f)
         f.write(');\n')
-        f.write('tlo ' + solidName + ';')
+        #f.write('tlo ' + solidName + ' -maxh=0.1;\n')
+        f.write('tlo ' + solidName + ';\n')
         
         
 def det(M):
@@ -264,6 +282,8 @@ def det(M):
             newM.append(copy.deepcopy(M[j]))
             newM[j-1].pop(i)
         result += ((-1) ** i) * det(newM) * M[0][i]
+    #if result == 0:
+    #    pprint(M)
     return result
 
 
@@ -347,7 +367,11 @@ def disksCross(disk1, disk2):
         for j, facet2 in enumerate(disk2.facets()):
             if j == 0:
                 continue
-            [alpha, beta, gamma] = decompose1(axeVector, basisVector1, basisVector2, facet2)
+            angles = decompose1(axeVector, basisVector1, basisVector2, facet2)
+            if not angles is None:
+                [alpha, beta, gamma] = angles
+            else:
+                return True
             #print(alpha, beta, gamma)
             if abs(beta) + abs(gamma) < 1:
                 #print(alpha, beta, gamma)
@@ -377,7 +401,11 @@ def disksCross1(disk1, disk2):
         basisVector1 = disk1.facets()[i - 1] / 2 + disk1.facets()[i] / 2
         basisVector2 = disk1.facets()[i + 1] / 2 + disk1.facets()[i] / 2
         for facet2 in disk2.facets():
-            [alpha, beta, gamma] = decompose1(axeVector, basisVector1, basisVector2, facet2)
+            angles = decompose1(axeVector, basisVector1, basisVector2, facet2)
+            if not angles is None:
+                [alpha, beta, gamma] = angles
+            else:
+                return True
             if abs(beta) + abs(gamma) < 1:
                 return True
     # facet-top/bottom intersection
@@ -405,6 +433,9 @@ def decompose1(axeVector, basisVector1, basisVector2, point):
     b = point.y()
     c = point.z()
     determinant = det([[x1, x2, x3], [y1, y2, y3], [z1, z2, z3]])
+    if determinant < EPSILON:
+        #print('Determinant = 0!')
+        return None
     #print(determinant)
     alpha = det([[a, x2, x3], [b, y2, y3], [c, z2, z3]]) / determinant
     beta = det([[x1, a, x3], [y1, b, y3], [z1, c, z3]]) / determinant
@@ -445,16 +476,17 @@ def orderParameter(cosTheta):
     return (3 * cosTheta**2 - 1) / 2
 
 
-def main(cubeSize=10, diskRadius=1, diskThickness=0.1):
+def mainExfoliation(cubeSize=None, diskRadius=None, diskThickness=None):
+    matrixString = 'solid matrix = cell'
     f = open(FNAME, 'w')
     f.write('algebraic3d;\n')
     f.write('solid cell = orthobrick(0, 0, 0; {0}, {0}, {0});\n'.format(CUBE_EDGE_LENGTH))
-    f.write('tlo cell -transparent;\n')
+    #f.write('tlo cell -transparent;\n')
     disks = []
     attempt = 0
     while len(disks) < NUMBER_OF_DISKS:
         attempt += 1
-        disk = DiskMadeOfDots(Point(0, 0, -POLYGONAL_DISK_THICKNESS/2), Point(0, 0, POLYGONAL_DISK_THICKNESS/2), 1)
+        disk = DiskMadeOfDots(Point(0, 0, -POLYGONAL_DISK_THICKNESS/2), Point(0, 0, POLYGONAL_DISK_THICKNESS/2), POLYGONAL_DISK_RADIUS)
         alpha = random.random() * 2 * math.pi
         beta = random.random() * 2 * math.pi
         gamma = random.random() * 2 * math.pi
@@ -490,7 +522,7 @@ def main(cubeSize=10, diskRadius=1, diskThickness=0.1):
         print('Try {0}, ready {1} of {2}'.format(attempt, len(disks), NUMBER_OF_DISKS))
         if attempt == MAX_ATTEMPTS:
             break
-    for disk in disks:
+    for i, disk in enumerate(disks):
         randomnessX = 0
         randomnessY = 0
         randomnessZ = 0
@@ -504,7 +536,147 @@ def main(cubeSize=10, diskRadius=1, diskThickness=0.1):
         randomnessX += orderParameter(cosThetaX)
         randomnessY += orderParameter(cosThetaY)
         randomnessZ += orderParameter(cosThetaZ)
-        disk.printToCSG(f, 'Disk1')
+        disk.printToCSG(f, 'Disk' + str(i))
+        matrixString += ' and not Disk' + str(i)
+    f.write(matrixString + ';\n')
+    f.write('tlo matrix -transparent;\n')    
+    f = open('matrices.txt', 'w')
+    for i in range(len(disks) + 1):
+        f.write('1 0 0 0 1 0 0 0 1;\n')
+        
+        
+        
+        
+    f = open('materials.txt', 'w')
+    C = [[[[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]], [[[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]], [[[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]]]
+    #for i in range(3):
+    #    C.append([])
+    #    for j in range(3):
+    #        C[i].append([])
+    #        for k in range(3):
+    #            C[i][j].append([])
+    #            for l in range(3):
+    #                C[i][j][k][l].append(0)
+    la = Ef * nu / (1.0 - 2 * nu) / (1 + nu)
+    mu = Ef / 2 / (1 + nu)
+    for particle in range(len(disks)):
+        for i in range(3):
+            for j in range(3):
+                for k in range(3):
+                    for l in range(3):
+                        brackets = delta(i, k) * delta(j, l)
+                        brackets += delta(i, l) * delta(j, k)
+                        C[i][j][k][l] = (la * delta(i, j) * delta(k, l) + mu * brackets)     
+                        f.write(str(C[i][j][k][l]) + ' ')
+    la = Em * nu / (1.0 - 2 * nu) / (1 + nu)
+    mu = Em / 2 / (1 + nu)
+    for i in range(3):
+        for j in range(3):
+            for k in range(3):
+                for l in range(3):
+                    brackets = delta(i, k) * delta(j, l)
+                    brackets += delta(i, l) * delta(j, k)
+                    C[i][j][k][l] = (la * delta(i, j) * delta(k, l) + mu * brackets)     
+                    f.write(str(C[i][j][k][l]) + ' ')
+    print('Randomness along X axe: {}'.format(randomnessX / len(disks)))
+    print('Randomness along Y axe: {}'.format(randomnessY / len(disks)))
+    print('Randomness along Z axe: {}'.format(randomnessZ / len(disks)))
+    diskVolume = math.pi * POLYGONAL_DISK_RADIUS**2 * POLYGONAL_DISK_THICKNESS
+    allVolume = CUBE_EDGE_LENGTH**3
+    part = len(disks) * diskVolume / allVolume
+    print('Volume part of fillers is {}'.format(part))
+    
+
+def mainIntercalation(cubeSize=10, diskRadius=1, diskThickness=0.1):
+    disks = []
+    disksUp = []
+    disksDown = []
+    attempt = 0
+    while len(disks) < NUMBER_OF_DISKS:
+        attempt += 1
+        disk = DiskMadeOfDots(Point(0, 0, -POLYGONAL_DISK_THICKNESS / 2),
+                              Point(0, 0, POLYGONAL_DISK_THICKNESS / 2),
+                              POLYGONAL_DISK_RADIUS)
+        diskUp = DiskMadeOfDots(Point(0, 0, POLYGONAL_DISK_THICKNESS / 2 + INTERLAYER_THICKNESS),
+                                Point(0, 0, 3 * POLYGONAL_DISK_THICKNESS / 2 + INTERLAYER_THICKNESS),
+                                POLYGONAL_DISK_RADIUS)
+        diskDown = DiskMadeOfDots(Point(0, 0, -POLYGONAL_DISK_THICKNESS/2 - INTERLAYER_THICKNESS),
+                                  Point(0, 0, -3 * POLYGONAL_DISK_THICKNESS / 2 - INTERLAYER_THICKNESS),
+                                  POLYGONAL_DISK_RADIUS)
+        alpha = random.random() * 2 * math.pi
+        beta = random.random() * 2 * math.pi
+        gamma = random.random() * 2 * math.pi
+        x = random.random() * CUBE_EDGE_LENGTH
+        y = random.random() * CUBE_EDGE_LENGTH
+        z = random.random() * CUBE_EDGE_LENGTH
+        c = math.cos(alpha)
+        s = math.sin(alpha)
+        Malpha = [[1, 0, 0],
+                  [0, c, -s],
+                  [0, s, c]]
+        disk.rotate(Malpha)
+        diskUp.rotate(Malpha)
+        diskDown.rotate(Malpha)
+        c = math.cos(beta)
+        s = math.sin(beta)
+        Mbeta = [[c, 0, s],
+                 [0, 1, 0],
+                 [-s, 0, c]]
+        disk.rotate(Mbeta)
+        diskUp.rotate(Mbeta)
+        diskDown.rotate(Mbeta)
+        c = math.cos(gamma)
+        s = math.sin(gamma)
+        Mgamma = [[c, -s, 0],
+                  [s, c, 0],
+                  [0, 0, 1]]
+        disk.rotate(Mgamma)
+        diskUp.rotate(Mgamma)
+        diskDown.rotate(Mgamma)
+        disk.translate(Vector(Point(0, 0, 0), Point(x, y, z)))
+        diskUp.translate(Vector(Point(0, 0, 0), Point(x, y, z)))
+        diskDown.translate(Vector(Point(0, 0, 0), Point(x, y, z)))
+        flag = 0
+        for oldDisk in disks:
+            if disksCross1(oldDisk, disk) or disksCross1(oldDisk, diskUp) or disksCross1(oldDisk, diskDown):
+                flag = 1
+                break
+        if not (boxCross(disk) or boxCross(diskUp) or boxCross(diskDown)) and flag == 0:
+            disks.append(disk)
+            disksUp.append(diskUp)
+            disksDown.append(diskDown)
+        print('Try {0}, ready {1} of {2}'.format(attempt, len(disks), NUMBER_OF_DISKS))
+        if attempt == MAX_ATTEMPTS:
+            break
+    matrixString = 'solid matrix = cell'
+    f = open(FNAME, 'w')
+    f.write('algebraic3d;\n')
+    f.write('solid cell = orthobrick(0, 0, 0; {0}, {0}, {0});\n'.format(CUBE_EDGE_LENGTH))
+    #f.write('tlo cell -transparent;\n')
+    for i, disk in enumerate(disks):
+        matrixString += ' and not Disk' + str(i)
+        randomnessX = 0
+        randomnessY = 0
+        randomnessZ = 0
+        x = disk.mainAxe().x()
+        y = disk.mainAxe().y()
+        z = disk.mainAxe().z()
+        l = disk.mainAxe().length()
+        cosThetaX = x / l
+        cosThetaY = y / l
+        cosThetaZ = z / l
+        randomnessX += orderParameter(cosThetaX)
+        randomnessY += orderParameter(cosThetaY)
+        randomnessZ += orderParameter(cosThetaZ)
+        disk.printToCSG(f, 'Disk' + str(i))
+    for i, disk in enumerate(disksUp):
+        disk.printToCSG(f, 'DiskUp' + str(i))
+        matrixString += ' and not DiskUp' + str(i)
+    for i, disk in enumerate(disksDown):
+        disk.printToCSG(f, 'DiskDown' + str(i))
+        matrixString += ' and not DiskDown' + str(i)
+    f.write(matrixString + ';\n')
+    f.write('tlo matrix -transparent -maxh=0.3;\n')
     print('Randomness along X axe: {}'.format(randomnessX / len(disks)))
     print('Randomness along Y axe: {}'.format(randomnessY / len(disks)))
     print('Randomness along Z axe: {}'.format(randomnessZ / len(disks)))
@@ -514,4 +686,327 @@ def main(cubeSize=10, diskRadius=1, diskThickness=0.1):
     print('Volume part of fillers is {}'.format(part))
 
 
-main()
+def mainIntercalation2(cubeSize=10, diskRadius=1, diskThickness=0.1):
+    disks = []
+    attempt = 0
+    while len(disks) / INTERCALATED_STACK_NUMBER < NUMBER_OF_DISKS:
+        newDisks = []
+        attempt += 1
+        disk = DiskMadeOfDots(Point(0, 0, -POLYGONAL_DISK_THICKNESS / 2),
+                              Point(0, 0, POLYGONAL_DISK_THICKNESS / 2),
+                              POLYGONAL_DISK_RADIUS)
+        for stackI in range(0, int((INTERCALATED_STACK_NUMBER - 1) / 2)):
+            diskUp = DiskMadeOfDots(Point(0, 0, POLYGONAL_DISK_THICKNESS * (0.5 + stackI) + INTERCALATED_INTERLAYER_THICKNESS * (1 + stackI)),
+                                    Point(0, 0, POLYGONAL_DISK_THICKNESS * (1.5 + stackI) + INTERCALATED_INTERLAYER_THICKNESS * (1 + stackI)),
+                                    POLYGONAL_DISK_RADIUS)
+            diskDown = DiskMadeOfDots(Point(0, 0, -POLYGONAL_DISK_THICKNESS * (0.5 + stackI) - INTERCALATED_INTERLAYER_THICKNESS * (1 + stackI)),
+                                      Point(0, 0, -POLYGONAL_DISK_THICKNESS * (1.5 + stackI) - INTERCALATED_INTERLAYER_THICKNESS * (1 + stackI)),
+                                      POLYGONAL_DISK_RADIUS)
+            newDisks.append(diskUp)
+            newDisks.append(diskDown)
+            pass
+        newDisks.append(disk)
+        alpha = random.random() * 2 * math.pi
+        beta = random.random() * 2 * math.pi
+        gamma = random.random() * 2 * math.pi
+        x = random.random() * CUBE_EDGE_LENGTH
+        y = random.random() * CUBE_EDGE_LENGTH
+        z = random.random() * CUBE_EDGE_LENGTH
+        c = math.cos(alpha)
+        s = math.sin(alpha)
+        Malpha = [[1, 0, 0],
+                  [0, c, -s],
+                  [0, s, c]]
+        for disk in newDisks:
+            disk.rotate(Malpha)
+        c = math.cos(beta)
+        s = math.sin(beta)
+        Mbeta = [[c, 0, s],
+                 [0, 1, 0],
+                 [-s, 0, c]]
+        for disk in newDisks:
+            disk.rotate(Mbeta)
+        c = math.cos(gamma)
+        s = math.sin(gamma)
+        Mgamma = [[c, -s, 0],
+                  [s, c, 0],
+                  [0, 0, 1]]
+        for disk in newDisks:
+            disk.rotate(Mgamma)
+        for disk in newDisks:
+            disk.translate(Vector(Point(0, 0, 0), Point(x, y, z)))
+        flag = 0
+        for oldDisk in disks:
+            for disk in newDisks:
+                if disksCross1(oldDisk, disk):
+                    flag = 1
+                    break
+        for disk in newDisks:
+            if boxCross(disk):
+                flag = 1
+                break
+        if flag == 0:
+            for disk in newDisks:
+                disks.append(disk)
+        print('Try {0}, ready {1} of {2}'.format(attempt, len(disks) / INTERCALATED_STACK_NUMBER, NUMBER_OF_DISKS))
+        if attempt == MAX_ATTEMPTS:
+            break
+    matrixString = 'solid matrix = cell'
+    f = open(FNAME, 'w')
+    f.write('algebraic3d;\n')
+    f.write('solid cell = orthobrick(0, 0, 0; {0}, {0}, {0});\n'.format(CUBE_EDGE_LENGTH))
+    #f.write('tlo cell -transparent;\n')
+    for i, disk in enumerate(disks):
+        matrixString += ' and not Disk' + str(i)
+        randomnessX = 0
+        randomnessY = 0
+        randomnessZ = 0
+        x = disk.mainAxe().x()
+        y = disk.mainAxe().y()
+        z = disk.mainAxe().z()
+        l = POLYGONAL_DISK_THICKNESS#disk.mainAxe().length()
+        cosThetaX = x / l
+        cosThetaY = y / l
+        cosThetaZ = z / l
+        randomnessX += orderParameter(cosThetaX)
+        randomnessY += orderParameter(cosThetaY)
+        randomnessZ += orderParameter(cosThetaZ)
+        disk.printToCSG(f, 'Disk' + str(i))
+    f.write(matrixString + ';\n')
+    f.write('tlo matrix -transparent -maxh=0.3;\n')
+    print('Randomness along X axe: {}'.format(randomnessX / len(disks)))
+    print('Randomness along Y axe: {}'.format(randomnessY / len(disks)))
+    print('Randomness along Z axe: {}'.format(randomnessZ / len(disks)))
+    diskVolume = math.pi * POLYGONAL_DISK_RADIUS**2 * POLYGONAL_DISK_THICKNESS
+    allVolume = CUBE_EDGE_LENGTH**3
+    part = len(disks) * diskVolume / allVolume
+    print('Volume part of fillers is {}'.format(part))
+    
+
+def mainTactoid(cubeSize=None, diskRadius=None, diskThickness=None):
+    disks = []
+    attempt = 0
+    while len(disks) / EXFOLIATED_STACK_NUMBER < NUMBER_OF_DISKS:
+        newDisks = []
+        attempt += 1
+        disk = DiskMadeOfDots(Point(0, 0, -POLYGONAL_DISK_THICKNESS / 2),
+                              Point(0, 0, POLYGONAL_DISK_THICKNESS / 2),
+                              POLYGONAL_DISK_RADIUS)
+        for stackI in range(0, int((EXFOLIATED_STACK_NUMBER - 1) / 2)):
+            diskUp = DiskMadeOfDots(Point(0, 0, POLYGONAL_DISK_THICKNESS * (0.5 + stackI) + INTERLAYER_THICKNESS * (1 + stackI)),
+                                    Point(0, 0, POLYGONAL_DISK_THICKNESS * (1.5 + stackI) + INTERLAYER_THICKNESS * (1 + stackI)),
+                                    POLYGONAL_DISK_RADIUS)
+            diskDown = DiskMadeOfDots(Point(0, 0, -POLYGONAL_DISK_THICKNESS * (0.5 + stackI) - INTERLAYER_THICKNESS * (1 + stackI)),
+                                      Point(0, 0, -POLYGONAL_DISK_THICKNESS * (1.5 + stackI) - INTERLAYER_THICKNESS * (1 + stackI)),
+                                      POLYGONAL_DISK_RADIUS)
+            newDisks.append(diskUp)
+            newDisks.append(diskDown)
+            pass
+        newDisks.append(disk)
+        alpha = random.random() * 2 * math.pi
+        beta = random.random() * 2 * math.pi
+        gamma = random.random() * 2 * math.pi
+        x = random.random() * CUBE_EDGE_LENGTH
+        y = random.random() * CUBE_EDGE_LENGTH
+        z = random.random() * CUBE_EDGE_LENGTH
+        c = math.cos(alpha)
+        s = math.sin(alpha)
+        Malpha = [[1, 0, 0],
+                  [0, c, -s],
+                  [0, s, c]]
+        for disk in newDisks:
+            disk.rotate(Malpha)
+        c = math.cos(beta)
+        s = math.sin(beta)
+        Mbeta = [[c, 0, s],
+                 [0, 1, 0],
+                 [-s, 0, c]]
+        for disk in newDisks:
+            disk.rotate(Mbeta)
+        c = math.cos(gamma)
+        s = math.sin(gamma)
+        Mgamma = [[c, -s, 0],
+                  [s, c, 0],
+                  [0, 0, 1]]
+        for disk in newDisks:
+            disk.rotate(Mgamma)
+        for disk in newDisks:
+            disk.translate(Vector(Point(0, 0, 0), Point(x, y, z)))
+        flag = 0
+        for oldDisk in disks:
+            for disk in newDisks:
+                if disksCross1(oldDisk, disk):
+                    flag = 1
+                    break
+        for disk in newDisks:
+            if boxCross(disk):
+                flag = 1
+                break
+        if flag == 0:
+            for disk in newDisks:
+                disks.append(disk)
+        print('Try {0}, ready {1} of {2}'.format(attempt, len(disks) / EXFOLIATED_STACK_NUMBER, NUMBER_OF_DISKS))
+        if attempt == MAX_ATTEMPTS:
+            break
+    matrixString = 'solid matrix = cell'
+    f = open(FNAME, 'w')
+    f.write('algebraic3d;\n')
+    f.write('solid cell = orthobrick(0, 0, 0; {0}, {0}, {0});\n'.format(CUBE_EDGE_LENGTH))
+    #f.write('tlo cell -transparent;\n')
+    for i, disk in enumerate(disks):
+        matrixString += ' and not Disk' + str(i)
+        randomnessX = 0
+        randomnessY = 0
+        randomnessZ = 0
+        x = disk.mainAxe().x()
+        y = disk.mainAxe().y()
+        z = disk.mainAxe().z()
+        l = POLYGONAL_DISK_THICKNESS#disk.mainAxe().length()
+        cosThetaX = x / l
+        cosThetaY = y / l
+        cosThetaZ = z / l
+        randomnessX += orderParameter(cosThetaX)
+        randomnessY += orderParameter(cosThetaY)
+        randomnessZ += orderParameter(cosThetaZ)
+        disk.printToCSG(f, 'Disk' + str(i))
+    f.write(matrixString + ';\n')
+    f.write('tlo matrix -transparent -maxh=0.3;\n')
+    print('Randomness along X axe: {}'.format(randomnessX / len(disks)))
+    print('Randomness along Y axe: {}'.format(randomnessY / len(disks)))
+    print('Randomness along Z axe: {}'.format(randomnessZ / len(disks)))
+    diskVolume = math.pi * POLYGONAL_DISK_RADIUS**2 * POLYGONAL_DISK_THICKNESS
+    diskVolume += len(disks) / EXFOLIATED_STACK_NUMBER * (EXFOLIATED_STACK_NUMBER - 1) * math.pi * POLYGONAL_DISK_RADIUS**2 * INTERLAYER_THICKNESS
+    allVolume = CUBE_EDGE_LENGTH**3
+    part = len(disks) * diskVolume / allVolume
+    print('Volume part of fillers is {}'.format(part))
+    
+
+def printCSGmain(disks):
+    f = open(FNAME, 'w')
+    f.write('algebraic3d;\n')
+    f.write('solid cell = orthobrick(0, 0, 0; {0}, {0}, {0});\n'.format(CUBE_EDGE_LENGTH))
+    #f.write('tlo cell -transparent;\n')
+    matrixString = 'solid matrix = cell'
+    for i, disk in enumerate(disks):
+        matrixString += ' and not Disk' + str(i)
+        randomnessX = 0
+        randomnessY = 0
+        randomnessZ = 0
+        x = disk.mainAxe().x()
+        y = disk.mainAxe().y()
+        z = disk.mainAxe().z()
+        l = POLYGONAL_DISK_THICKNESS#disk.mainAxe().length()
+        cosThetaX = x / l
+        cosThetaY = y / l
+        cosThetaZ = z / l
+        randomnessX += orderParameter(cosThetaX)
+        randomnessY += orderParameter(cosThetaY)
+        randomnessZ += orderParameter(cosThetaZ)
+        disk.printToCSG(f, 'Disk' + str(i))
+    f.write(matrixString + ';\n')
+    f.write('tlo matrix -transparent -maxh=0.3;\n')
+    print('Randomness along X axe: {}'.format(randomnessX / len(disks)))
+    print('Randomness along Y axe: {}'.format(randomnessY / len(disks)))
+    print('Randomness along Z axe: {}'.format(randomnessZ / len(disks)))
+    diskVolume = len(disks) * math.pi * POLYGONAL_DISK_RADIUS**2 * POLYGONAL_DISK_THICKNESS
+    diskVolume += len(disks) / EXFOLIATED_STACK_NUMBER * (EXFOLIATED_STACK_NUMBER - 1) * math.pi * POLYGONAL_DISK_RADIUS**2 * INTERLAYER_THICKNESS
+    allVolume = CUBE_EDGE_LENGTH**3
+    part = diskVolume / allVolume
+    print('Volume part of fillers is {}'.format(part))
+    
+    sys.exit()
+
+
+def tactoidRecursive(disks=[], depths=DEPTHS, depth=0):
+    if NUMBER_OF_DISKS > 99:
+        print('Too deep deep recursion is need to make the structure!')
+        sys.exit()
+
+    attempt = 0
+    timeToBreak = 0
+
+    if len(disks) / EXFOLIATED_STACK_NUMBER == NUMBER_OF_DISKS:
+        printCSGmain(disks)
+
+    inititalLength = len(disks)
+    DEPTHSTMP = copy.deepcopy(depths)
+    for attempt in range(RECURSION_MAX_ATTEMPTS):
+        disksTmp = disks
+        newDisks = []
+        disk = DiskMadeOfDots(Point(0, 0, -POLYGONAL_DISK_THICKNESS / 2),
+                              Point(0, 0, POLYGONAL_DISK_THICKNESS / 2),
+                              POLYGONAL_DISK_RADIUS)
+        for stackI in range(0, int((EXFOLIATED_STACK_NUMBER - 1) / 2)):
+            diskUp = DiskMadeOfDots(Point(0, 0, POLYGONAL_DISK_THICKNESS * (0.5 + stackI) + INTERLAYER_THICKNESS * (1 + stackI)),
+                                    Point(0, 0, POLYGONAL_DISK_THICKNESS * (1.5 + stackI) + INTERLAYER_THICKNESS * (1 + stackI)),
+                                    POLYGONAL_DISK_RADIUS)
+            diskDown = DiskMadeOfDots(Point(0, 0, -POLYGONAL_DISK_THICKNESS * (0.5 + stackI) - INTERLAYER_THICKNESS * (1 + stackI)),
+                                      Point(0, 0, -POLYGONAL_DISK_THICKNESS * (1.5 + stackI) - INTERLAYER_THICKNESS * (1 + stackI)),
+                                      POLYGONAL_DISK_RADIUS)
+            newDisks.append(diskUp)
+            newDisks.append(diskDown)
+        newDisks.append(disk)
+    
+        alpha = random.random() * 2 * math.pi
+        beta = random.random() * 2 * math.pi
+        gamma = random.random() * 2 * math.pi
+        x = random.random() * CUBE_EDGE_LENGTH
+        y = random.random() * CUBE_EDGE_LENGTH
+        z = random.random() * CUBE_EDGE_LENGTH
+        c = math.cos(alpha)
+        s = math.sin(alpha)
+        Malpha = [[1, 0, 0],
+                  [0, c, -s],
+                  [0, s, c]]
+        for disk in newDisks:
+            disk.rotate(Malpha)
+        c = math.cos(beta)
+        s = math.sin(beta)
+        Mbeta = [[c, 0, s],
+                 [0, 1, 0],
+                 [-s, 0, c]]
+        for disk in newDisks:
+            disk.rotate(Mbeta)
+        c = math.cos(gamma)
+        s = math.sin(gamma)
+        Mgamma = [[c, -s, 0],
+                  [s, c, 0],
+                  [0, 0, 1]]
+        for disk in newDisks:
+            disk.rotate(Mgamma)
+        for disk in newDisks:
+            disk.translate(Vector(Point(0, 0, 0), Point(x, y, z)))
+        flag = 0
+        for oldDisk in disks:
+            if flag == 1:
+                break
+            for disk in newDisks:
+                if disksCross1(oldDisk, disk):
+                    flag = 1
+                    print('Crossing another disk ', end='')
+                    break
+        for disk in newDisks:
+            if boxCross(disk):
+                flag = 1
+                print('Crossing the box ', end='')
+                break
+        if flag == 0:
+            for disk in newDisks:
+                disksTmp.append(disk)
+        DEPTHSTMP[depth] += 1
+        print('Depth = {0}, attempt = {3}, ready {1} of {2} '.format(DEPTHSTMP, len(disksTmp) / EXFOLIATED_STACK_NUMBER, NUMBER_OF_DISKS, attempt))
+        if inititalLength != len(disksTmp):
+            disks = tactoidRecursive(disksTmp, DEPTHSTMP, depth + 1)
+    return disks#printCSGmain(disks)
+        
+        
+def mainTactoidRecursive():
+    disks = tactoidRecursive()
+    if len(disks) > 0:
+        printCSGmain(disks)
+
+
+mainExfoliation()
+#mainIntercalation2()
+#mainTactoid()
+#mainTactoidRecursive()
