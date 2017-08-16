@@ -1,27 +1,27 @@
 import math
 
+from Options import Options
 from Point import Point
 from Vector import Vector
-
-VERTICES_NUMBER = 16 # must be power of 2
 
 
 class DiskMadeOfDots():
     def __init__(self, dot1, dot2, radius, verticesNumber=16):
+        o = Options()
         self.values = {}
         self.values['bottomCenter'] = dot1
         self.values['topCenter'] = dot2
         self.values['radius'] = radius
         self.values['facetsCenters'] = []
-        self.values['verticesNumber'] = verticesNumber
-        for i in range(VERTICES_NUMBER):
+        self.values['verticesNumber'] = o.getProperty('verticesNumber')
+        for i in range(int(self.values['verticesNumber'])):
             diskCenter = Point(dot1.x() / 2 + dot2.x() / 2,
                                dot1.y() / 2 + dot2.y() / 2,
                                dot1.z() / 2 + dot2.z() / 2)
             dot = diskCenter + Point(radius * math.cos(2 * math.pi * i /
-                                                       verticesNumber),
+                                                       self.values['verticesNumber']),
                                      radius * math.sin(2 * math.pi * i /
-                                                       verticesNumber),
+                                                       self.values['verticesNumber']),
                                      0)
             self.values['facetsCenters'].append(dot)
 
