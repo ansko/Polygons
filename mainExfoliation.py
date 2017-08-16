@@ -101,7 +101,7 @@ def mainExfoliation(cubeSize=None, diskRadius=None, diskThickness=None):
     f.write('tlo matrix -transparent;\n')    
     f = open('matrices.txt', 'w')
     for i in range(len(disks) + 1):
-        f.write('1 0 0 0 1 0 0 0 1;\n')
+        f.write('1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0\n')
     f = open('materials.txt', 'w')
     C = [[[[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]], [[[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]], [[[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]]]
     la = E_f * nu_f / (1.0 - 2 * nu_f) / (1 + nu_f)
