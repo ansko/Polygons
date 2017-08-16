@@ -10,6 +10,7 @@ import pprint
 pprint=pprint.PrettyPrinter(indent=4).pprint
 
 from DiskMadeOfDots import DiskMadeOfDots
+from Options import Options
 from PlaneMadeOfDots import PlaneMadeOfDots
 from Point import Point
 from Vector import Vector
@@ -20,45 +21,39 @@ from planeLineIntersection import planeLineIntersection
 from printCSGMain import printCSGMain
 from utils import delta, det, decompose, orderParameter
 
-NUMBER_OF_DISKS = 5
-MAX_ATTEMPTS = 10000
-EPSILON = 10 ** (-10)
-TOUCHING_DISKS_FRACTION = 0.02
-RECURSION_MAX_ATTEMPTS = 10
-DEPTHS = [0 for i in range(NUMBER_OF_DISKS)]
-
-VERTICES_NUMBER = 16 # must be power of 2
-VOLUME_FRACTION = 0.00033
-CUBE_EDGE_LENGTH = 300
-POLYGONAL_DISK_THICKNESS = 0.7
-POLYGONAL_DISK_RADIUS = 50
-INTERLAYER_THICKNESS = 0.3
-INTERCALATED_INTERLAYER_THICKNESS = 3.3
-INTERCALATED_STACK_NUMBER = 7 # -- should be odd
-EXFOLIATED_STACK_NUMBER = 15  # /
-FNAME = '1.geo'
-
-Ef = 232
-Em = 2
-nu = 0.3
-
 
 def mainIntercalation2(cubeSize=10, diskRadius=1, diskThickness=0.1):
+    o = Options()
+    cubeEdgeLength = o.getProperty('cubeEdgeLength')
+    numberOfDisks = o.getProperty('numberOfDisks')
+    polygonalDiskThickness = o.getProperty('polygonalDiskThickness')
+    polygonalDiskRadius = o.getProperty('polygonalDiskRadius')
+    numberOfDisks = o.getProperty('numberOfDisks')
+    maxAttempts = o.getProperty('maxAttempts')
+    E_m = o.getProperty('E_m')
+    nu_m = o.getProperty('nu_m')
+    E_f = o.getProperty('E_f')
+    nu_f = o.getProperty('nu_f')
+    fname = o.getProperty('fname')
+    interlayerThickness = o.getProperty('interlayerThickness')
+    intercalatedStackNumber = o.getProperty('intercalatedStackNumber')
+    intercalatedInterlayerThickness = o.getProperty('intercalatedInterlayerThickness')
+
     disks = []
     attempt = 0
-    while len(disks) / INTERCALATED_STACK_NUMBER < NUMBER_OF_DISKS:
+    while len(disks) / intercalatedStackNumber < numberOfDisks:
         newDisks = []
         attempt += 1
-        disk = DiskMadeOfDots(Point(0, 0, -POLYGONAL_DISK_THICKNESS / 2),
-                              Point(0, 0, POLYGONAL_DISK_THICKNESS / 2),
-                              POLYGONAL_DISK_RADIUS)
-        for stackI in range(0, int((INTERCALATED_STACK_NUMBER - 1) / 2)):
-            diskUp = DiskMadeOfDots(Point(0, 0, POLYGONAL_DISK_THICKNESS * (0.5 + stackI) + INTERCALATED_INTERLAYER_THICKNESS * (1 + stackI)),
-                                    Point(0, 0, POLYGONAL_DISK_THICKNESS * (1.5 + stackI) + INTERCALATED_INTERLAYER_THICKNESS * (1 + stackI)),
-                                    POLYGONAL_DISK_RADIUS)
-            diskDown = DiskMadeOfDots(Point(0, 0, -POLYGONAL_DISK_THICKNESS * (0.5 + stackI) - INTERCALATED_INTERLAYER_THICKNESS * (1 + stackI)),
-                                      Point(0, 0, -POLYGONAL_DISK_THICKNESS * (1.5 + stackI) - INTERCALATED_INTERLAYER_THICKNESS * (1 + stackI)),
-                                      POLYGONAL_DISK_RADIUS)
+        disk = DiskMadeOfDots(Point(0, 0, -polygonalDiskThickness / 2),
+                              Point(0, 0, polygonalDiskThickness / 2),
+                              polygonalDiskRadius)
+        for stackI in range(0, int((intercalatedStackNumber - 1) / 2)):
+            diskUp = DiskMadeOfDots(Point(0, 0, polygonalDiskThickness * (0.5 + stackI) + intercalatedInterlayerThickness * (1 + stackI)),
+                                    Point(0, 0, polygonalDiskThickness * (1.5 + stackI) + intercalatedInterlayerThickness * (1 + stackI)),
+                                    polygonalDiskRadius)
+            diskDown = DiskMadeOfDots(Point(0, 0, -polygonalDiskThickness * (0.5 + stackI) - intercalatedInterlayerThickness * (1 + stackI)),
+                                      Point(0, 0, -polygonalDiskThickness * (1.5 + stackI) - intercalatedInterlayerThickness * (1 + stackI)),
+                                      polygonalDiskRadius)
             newDisks.append(diskUp)
             newDisks.append(diskDown)
             pass
@@ -66,9 +61,9 @@ def mainIntercalation2(cubeSize=10, diskRadius=1, diskThickness=0.1):
         alpha = random.random() * 2 * math.pi
         beta = random.random() * 2 * math.pi
         gamma = random.random() * 2 * math.pi
-        x = random.random() * CUBE_EDGE_LENGTH
-        y = random.random() * CUBE_EDGE_LENGTH
-        z = random.random() * CUBE_EDGE_LENGTH
+        x = random.random() * cubeEdgeLength
+        y = random.random() * cubeEdgeLength
+        z = random.random() * cubeEdgeLength
         c = math.cos(alpha)
         s = math.sin(alpha)
         Malpha = [[1, 0, 0],
@@ -105,13 +100,13 @@ def mainIntercalation2(cubeSize=10, diskRadius=1, diskThickness=0.1):
         if flag == 0:
             for disk in newDisks:
                 disks.append(disk)
-        print('Try {0}, ready {1} of {2}'.format(attempt, len(disks) / INTERCALATED_STACK_NUMBER, NUMBER_OF_DISKS))
-        if attempt == MAX_ATTEMPTS:
+        print('Try {0}, ready {1} of {2}'.format(attempt, len(disks) / intercalatedStackNumber, numberOfDisks))
+        if attempt == maxAttempts:
             break
     matrixString = 'solid matrix = cell'
-    f = open(FNAME, 'w')
+    f = open(fname, 'w')
     f.write('algebraic3d;\n')
-    f.write('solid cell = orthobrick(0, 0, 0; {0}, {0}, {0});\n'.format(CUBE_EDGE_LENGTH))
+    f.write('solid cell = orthobrick(0, 0, 0; {0}, {0}, {0});\n'.format(cubeEdgeLength))
     #f.write('tlo cell -transparent;\n')
     for i, disk in enumerate(disks):
         matrixString += ' and not Disk' + str(i)
@@ -121,7 +116,7 @@ def mainIntercalation2(cubeSize=10, diskRadius=1, diskThickness=0.1):
         x = disk.mainAxe().x()
         y = disk.mainAxe().y()
         z = disk.mainAxe().z()
-        l = POLYGONAL_DISK_THICKNESS#disk.mainAxe().length()
+        l = polygonalDiskThickness
         cosThetaX = x / l
         cosThetaY = y / l
         cosThetaZ = z / l
@@ -134,8 +129,8 @@ def mainIntercalation2(cubeSize=10, diskRadius=1, diskThickness=0.1):
     print('Randomness along X axe: {}'.format(randomnessX / len(disks)))
     print('Randomness along Y axe: {}'.format(randomnessY / len(disks)))
     print('Randomness along Z axe: {}'.format(randomnessZ / len(disks)))
-    diskVolume = math.pi * POLYGONAL_DISK_RADIUS**2 * POLYGONAL_DISK_THICKNESS
-    allVolume = CUBE_EDGE_LENGTH**3
+    diskVolume = math.pi * polygonalDiskRadius**2 * polygonalDiskThickness
+    allVolume = cubeEdgeLength**3
     part = len(disks) * diskVolume / allVolume
     print('Volume part of fillers is {}'.format(part))
 

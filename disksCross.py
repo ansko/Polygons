@@ -1,13 +1,16 @@
+from Options import Options
 from Vector import Vector
-from utils import decompose
 
-POLYGONAL_DISK_THICKNESS = 0.7
-POLYGONAL_DISK_RADIUS = 50
+from planeLineIntersection import planeLineIntersection
+from utils import decompose
 
 
 def disksCross(disk1, disk2):
-    bigDistance = 2 * (POLYGONAL_DISK_RADIUS**2 + POLYGONAL_DISK_THICKNESS**2)**0.5
-    smallDistance = POLYGONAL_DISK_THICKNESS * 2
+    o = Options()
+    polygonalDiskRadius = o.getProperty('polygonalDiskRadius')
+    polygonalDiskThickness = o.getProperty('polygonalDiskThickness')
+    bigDistance = 2 * (polygonalDiskRadius**2 + polygonalDiskThickness**2)**0.5
+    smallDistance = polygonalDiskThickness * 2
     # check if centers are very far from each other
     c1 = disk1.center()
     c2 = disk2.center()
@@ -37,9 +40,9 @@ def disksCross(disk1, disk2):
     # facet-top/bottom intersection
     for j in range(1, len(disk2.facets())):
         top = planeLineIntersection(tc1, c1 - tc1, disk2.facets()[j - 1], disk2.facets()[j])
-        if top[0] and Vector(tc1, top[1]).length() < POLYGONAL_DISK_RADIUS:
+        if top[0] and Vector(tc1, top[1]).length() < polygonalDiskRadius:
             return True
         bottom = planeLineIntersection(bc1, c1 - bc1, disk2.facets()[j - 1], disk2.facets()[j])
-        if bottom[0] and Vector(bc1, bottom[1]).length() < POLYGONAL_DISK_RADIUS:
+        if bottom[0] and Vector(bc1, bottom[1]).length() < polygonalDiskRadius:
             return True
     return False

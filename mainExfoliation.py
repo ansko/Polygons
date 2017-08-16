@@ -10,6 +10,7 @@ import pprint
 pprint=pprint.PrettyPrinter(indent=4).pprint
 
 from DiskMadeOfDots import DiskMadeOfDots
+from Options import Options
 from PlaneMadeOfDots import PlaneMadeOfDots
 from Point import Point
 from Vector import Vector
@@ -20,46 +21,37 @@ from planeLineIntersection import planeLineIntersection
 from printCSGMain import printCSGMain
 from utils import delta, det, decompose, orderParameter
 
-NUMBER_OF_DISKS = 5
-MAX_ATTEMPTS = 10000
-EPSILON = 10 ** (-10)
-TOUCHING_DISKS_FRACTION = 0.02
-RECURSION_MAX_ATTEMPTS = 10
-DEPTHS = [0 for i in range(NUMBER_OF_DISKS)]
-
-VERTICES_NUMBER = 16 # must be power of 2
-VOLUME_FRACTION = 0.00033
-CUBE_EDGE_LENGTH = 300
-POLYGONAL_DISK_THICKNESS = 0.7
-POLYGONAL_DISK_RADIUS = 50
-INTERLAYER_THICKNESS = 0.3
-INTERCALATED_INTERLAYER_THICKNESS = 3.3
-INTERCALATED_STACK_NUMBER = 7 # -- should be odd
-EXFOLIATED_STACK_NUMBER = 15  # /
-FNAME = '1.geo'
-
-Ef = 232
-Em = 2
-nu = 0.3
-
 
 def mainExfoliation(cubeSize=None, diskRadius=None, diskThickness=None):
+    o = Options()
+    cubeEdgeLength = o.getProperty('cubeEdgeLength')
+    numberOfDisks = o.getProperty('numberOfDisks')
+    polygonalDiskThickness = o.getProperty('polygonalDiskThickness')
+    polygonalDiskRadius = o.getProperty('polygonalDiskRadius')
+    numberOfDisks = o.getProperty('numberOfDisks')
+    maxAttempts = o.getProperty('maxAttempts')
+    E_m = o.getProperty('E_m')
+    nu_m = o.getProperty('nu_m')
+    E_f = o.getProperty('E_f')
+    nu_f = o.getProperty('nu_f')
+    fname = o.getProperty('fname')
+
     matrixString = 'solid matrix = cell'
-    f = open(FNAME, 'w')
+    f = open(fname, 'w')
     f.write('algebraic3d;\n')
-    f.write('solid cell = orthobrick(0, 0, 0; {0}, {0}, {0});\n'.format(CUBE_EDGE_LENGTH))
+    f.write('solid cell = orthobrick(0, 0, 0; {0}, {0}, {0});\n'.format(cubeEdgeLength))
     #f.write('tlo cell -transparent;\n')
     disks = []
     attempt = 0
-    while len(disks) < NUMBER_OF_DISKS:
+    while len(disks) < numberOfDisks:
         attempt += 1
-        disk = DiskMadeOfDots(Point(0, 0, -POLYGONAL_DISK_THICKNESS/2), Point(0, 0, POLYGONAL_DISK_THICKNESS/2), POLYGONAL_DISK_RADIUS)
+        disk = DiskMadeOfDots(Point(0, 0, -polygonalDiskThickness/2), Point(0, 0, polygonalDiskThickness/2), polygonalDiskRadius)
         alpha = random.random() * 2 * math.pi
         beta = random.random() * 2 * math.pi
         gamma = random.random() * 2 * math.pi
-        x = random.random() * CUBE_EDGE_LENGTH
-        y = random.random() * CUBE_EDGE_LENGTH
-        z = random.random() * CUBE_EDGE_LENGTH
+        x = random.random() * cubeEdgeLength
+        y = random.random() * cubeEdgeLength
+        z = random.random() * cubeEdgeLength
         c = math.cos(alpha)
         s = math.sin(alpha)
         Malpha = [[1, 0, 0],
@@ -86,8 +78,8 @@ def mainExfoliation(cubeSize=None, diskRadius=None, diskThickness=None):
                 break
         if not boxCross(disk) and flag == 0:
             disks.append(disk)
-        print('Try {0}, ready {1} of {2}'.format(attempt, len(disks), NUMBER_OF_DISKS))
-        if attempt == MAX_ATTEMPTS:
+        print('Try {0}, ready {1} of {2}'.format(attempt, len(disks), numberOfDisks))
+        if attempt == maxAttempts:
             break
     for i, disk in enumerate(disks):
         randomnessX = 0
@@ -112,8 +104,8 @@ def mainExfoliation(cubeSize=None, diskRadius=None, diskThickness=None):
         f.write('1 0 0 0 1 0 0 0 1;\n')
     f = open('materials.txt', 'w')
     C = [[[[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]], [[[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]], [[[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]]]
-    la = Ef * nu / (1.0 - 2 * nu) / (1 + nu)
-    mu = Ef / 2 / (1 + nu)
+    la = E_f * nu_f / (1.0 - 2 * nu_f) / (1 + nu_f)
+    mu = E_f / 2 / (1 + nu_f)
     for particle in range(len(disks)):
         for i in range(3):
             for j in range(3):
@@ -123,8 +115,8 @@ def mainExfoliation(cubeSize=None, diskRadius=None, diskThickness=None):
                         brackets += delta(i, l) * delta(j, k)
                         C[i][j][k][l] = (la * delta(i, j) * delta(k, l) + mu * brackets)     
                         f.write(str(C[i][j][k][l]) + ' ')
-    la = Em * nu / (1.0 - 2 * nu) / (1 + nu)
-    mu = Em / 2 / (1 + nu)
+    la = E_m * nu_m / (1.0 - 2 * nu_m) / (1 + nu_m)
+    mu = E_m / 2 / (1 + nu_m)
     for i in range(3):
         for j in range(3):
             for k in range(3):
@@ -136,8 +128,8 @@ def mainExfoliation(cubeSize=None, diskRadius=None, diskThickness=None):
     print('Randomness along X axe: {}'.format(randomnessX / len(disks)))
     print('Randomness along Y axe: {}'.format(randomnessY / len(disks)))
     print('Randomness along Z axe: {}'.format(randomnessZ / len(disks)))
-    diskVolume = math.pi * POLYGONAL_DISK_RADIUS**2 * POLYGONAL_DISK_THICKNESS
-    allVolume = CUBE_EDGE_LENGTH**3
+    diskVolume = math.pi * polygonalDiskRadius**2 * polygonalDiskThickness
+    allVolume = cubeEdgeLength**3
     part = len(disks) * diskVolume / allVolume
     print('Volume part of fillers is {}'.format(part))
 
