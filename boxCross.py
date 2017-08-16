@@ -1,8 +1,12 @@
+CUBE_EDGE_LENGTH = 300
+
+
 def boxCross(disk):
+    verticesNumber = disk.verticesNumber()
     vectorUp = disk.topCenter() - disk.bottomCenter()
     vectorUp /= 2
     for i, dot in enumerate(disk.facets()):
-        vectorSide = disk.facets()[i - int(VERTICES_NUMBER * 3 / 4)] - disk.facets()[i - int(VERTICES_NUMBER / 4) ]
+        vectorSide = disk.facets()[i - int(verticesNumber * 3 / 4)] - disk.facets()[i - int(verticesNumber / 4) ]
         vectorSide /= 2
         if ((dot + vectorUp + vectorSide).x() < 0 or 
             (dot + vectorUp + vectorSide).y() < 0 or

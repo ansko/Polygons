@@ -1,3 +1,8 @@
+import copy
+
+EPSILON = 10 ** (-10)
+
+
 def delta(i, j):
     if i == j:
         return 1

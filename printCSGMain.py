@@ -1,5 +1,16 @@
-def printCSGmain(disks):
-    f = open(FNAME, 'w')
+import math
+
+from utils import orderParameter
+
+CUBE_EDGE_LENGTH = 300
+POLYGONAL_DISK_THICKNESS = 0.7
+POLYGONAL_DISK_RADIUS = 50
+EXFOLIATED_STACK_NUMBER = 15  # /
+INTERLAYER_THICKNESS = 0.3
+
+
+def printCSGMain(disks, fname):
+    f = open(fname, 'w')
     f.write('algebraic3d;\n')
     f.write('solid cell = orthobrick(0, 0, 0; {0}, {0}, {0});\n'.format(CUBE_EDGE_LENGTH))
     #f.write('tlo cell -transparent;\n')
@@ -31,4 +42,4 @@ def printCSGmain(disks):
     part = diskVolume / allVolume
     print('Volume part of fillers is {}'.format(part))
     
-    sys.exit()
+  #  sys.exit()

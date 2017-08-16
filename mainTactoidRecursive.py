@@ -9,6 +9,17 @@ import sys
 import pprint
 pprint=pprint.PrettyPrinter(indent=4).pprint
 
+from DiskMadeOfDots import DiskMadeOfDots
+from PlaneMadeOfDots import PlaneMadeOfDots
+from Point import Point
+from Vector import Vector
+
+from boxCross import boxCross
+from disksCross import disksCross
+from planeLineIntersection import planeLineIntersection
+from printCSGMain import printCSGMain
+from utils import delta, det, decompose, orderParameter
+
 NUMBER_OF_DISKS = 5
 MAX_ATTEMPTS = 10000
 EPSILON = 10 ** (-10)
@@ -35,13 +46,10 @@ def tactoidRecursive(disks=[], depths=DEPTHS, depth=0):
     if NUMBER_OF_DISKS > 99:
         print('Too deep deep recursion is need to make the structure!')
         sys.exit()
-
-    attempt = 0
     timeToBreak = 0
-
     if len(disks) / EXFOLIATED_STACK_NUMBER == NUMBER_OF_DISKS:
-        printCSGmain(disks)
-
+        printCSGMain(disks, FNAME)
+        sys.exit()
     inititalLength = len(disks)
     DEPTHSTMP = copy.deepcopy(depths)
     for attempt in range(RECURSION_MAX_ATTEMPTS):
@@ -49,14 +57,17 @@ def tactoidRecursive(disks=[], depths=DEPTHS, depth=0):
         newDisks = []
         disk = DiskMadeOfDots(Point(0, 0, -POLYGONAL_DISK_THICKNESS / 2),
                               Point(0, 0, POLYGONAL_DISK_THICKNESS / 2),
-                              POLYGONAL_DISK_RADIUS)
+                              POLYGONAL_DISK_RADIUS,
+                              VERTICES_NUMBER)
         for stackI in range(0, int((EXFOLIATED_STACK_NUMBER - 1) / 2)):
             diskUp = DiskMadeOfDots(Point(0, 0, POLYGONAL_DISK_THICKNESS * (0.5 + stackI) + INTERLAYER_THICKNESS * (1 + stackI)),
                                     Point(0, 0, POLYGONAL_DISK_THICKNESS * (1.5 + stackI) + INTERLAYER_THICKNESS * (1 + stackI)),
-                                    POLYGONAL_DISK_RADIUS)
+                                    POLYGONAL_DISK_RADIUS,
+                                    VERTICES_NUMBER)
             diskDown = DiskMadeOfDots(Point(0, 0, -POLYGONAL_DISK_THICKNESS * (0.5 + stackI) - INTERLAYER_THICKNESS * (1 + stackI)),
                                       Point(0, 0, -POLYGONAL_DISK_THICKNESS * (1.5 + stackI) - INTERLAYER_THICKNESS * (1 + stackI)),
-                                      POLYGONAL_DISK_RADIUS)
+                                      POLYGONAL_DISK_RADIUS,
+                                      VERTICES_NUMBER)
             newDisks.append(diskUp)
             newDisks.append(diskDown)
         newDisks.append(disk)
@@ -95,29 +106,28 @@ def tactoidRecursive(disks=[], depths=DEPTHS, depth=0):
             if flag == 1:
                 break
             for disk in newDisks:
-                if disksCross1(oldDisk, disk):
+                if disksCross(oldDisk, disk):
                     flag = 1
-                    print('Crossing another disk ', end='')
                     break
         for disk in newDisks:
             if boxCross(disk):
                 flag = 1
-                print('Crossing the box ', end='')
                 break
         if flag == 0:
             for disk in newDisks:
                 disksTmp.append(disk)
         DEPTHSTMP[depth] += 1
-        print('Depth = {0}, attempt = {3}, ready {1} of {2} '.format(DEPTHSTMP, len(disksTmp) / EXFOLIATED_STACK_NUMBER, NUMBER_OF_DISKS, attempt))
+        print('Depth = {0}, ready {1} of {2} '.format(DEPTHSTMP, len(disksTmp) / EXFOLIATED_STACK_NUMBER, NUMBER_OF_DISKS))
         if inititalLength != len(disksTmp):
             disks = tactoidRecursive(disksTmp, DEPTHSTMP, depth + 1)
-    return disks#printCSGmain(disks)
+    return disks
         
         
 def mainTactoidRecursive():
     disks = tactoidRecursive()
     if len(disks) > 0:
-        printCSGmain(disks)
+        printCSGMain(disks, FNAME)
+        sys.exit()
 
 
 mainTactoidRecursive()

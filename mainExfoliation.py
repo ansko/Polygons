@@ -1,3 +1,48 @@
+#!/usr/bin/env python3
+# coding utf-8
+
+import math
+import random
+import copy
+import sys
+
+import pprint
+pprint=pprint.PrettyPrinter(indent=4).pprint
+
+from DiskMadeOfDots import DiskMadeOfDots
+from PlaneMadeOfDots import PlaneMadeOfDots
+from Point import Point
+from Vector import Vector
+
+from boxCross import boxCross
+from disksCross import disksCross
+from planeLineIntersection import planeLineIntersection
+from printCSGMain import printCSGMain
+from utils import delta, det, decompose, orderParameter
+
+NUMBER_OF_DISKS = 5
+MAX_ATTEMPTS = 10000
+EPSILON = 10 ** (-10)
+TOUCHING_DISKS_FRACTION = 0.02
+RECURSION_MAX_ATTEMPTS = 10
+DEPTHS = [0 for i in range(NUMBER_OF_DISKS)]
+
+VERTICES_NUMBER = 16 # must be power of 2
+VOLUME_FRACTION = 0.00033
+CUBE_EDGE_LENGTH = 300
+POLYGONAL_DISK_THICKNESS = 0.7
+POLYGONAL_DISK_RADIUS = 50
+INTERLAYER_THICKNESS = 0.3
+INTERCALATED_INTERLAYER_THICKNESS = 3.3
+INTERCALATED_STACK_NUMBER = 7 # -- should be odd
+EXFOLIATED_STACK_NUMBER = 15  # /
+FNAME = '1.geo'
+
+Ef = 232
+Em = 2
+nu = 0.3
+
+
 def mainExfoliation(cubeSize=None, diskRadius=None, diskThickness=None):
     matrixString = 'solid matrix = cell'
     f = open(FNAME, 'w')
@@ -36,7 +81,7 @@ def mainExfoliation(cubeSize=None, diskRadius=None, diskThickness=None):
         disk.translate(Vector(Point(0, 0, 0), Point(x, y, z)))
         flag = 0
         for oldDisk in disks:
-            if disksCross1(oldDisk, disk):
+            if disksCross(oldDisk, disk):
                 flag = 1
                 break
         if not boxCross(disk) and flag == 0:
@@ -65,20 +110,8 @@ def mainExfoliation(cubeSize=None, diskRadius=None, diskThickness=None):
     f = open('matrices.txt', 'w')
     for i in range(len(disks) + 1):
         f.write('1 0 0 0 1 0 0 0 1;\n')
-        
-        
-        
-        
     f = open('materials.txt', 'w')
     C = [[[[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]], [[[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]], [[[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]]]
-    #for i in range(3):
-    #    C.append([])
-    #    for j in range(3):
-    #        C[i].append([])
-    #        for k in range(3):
-    #            C[i][j].append([])
-    #            for l in range(3):
-    #                C[i][j][k][l].append(0)
     la = Ef * nu / (1.0 - 2 * nu) / (1 + nu)
     mu = Ef / 2 / (1 + nu)
     for particle in range(len(disks)):
@@ -107,3 +140,6 @@ def mainExfoliation(cubeSize=None, diskRadius=None, diskThickness=None):
     allVolume = CUBE_EDGE_LENGTH**3
     part = len(disks) * diskVolume / allVolume
     print('Volume part of fillers is {}'.format(part))
+
+
+mainExfoliation()
