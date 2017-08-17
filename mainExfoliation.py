@@ -45,7 +45,9 @@ def mainExfoliation(cubeSize=None, diskRadius=None, diskThickness=None):
     attempt = 0
     while len(disks) < numberOfDisks:
         attempt += 1
-        disk = DiskMadeOfDots(Point(0, 0, -polygonalDiskThickness/2), Point(0, 0, polygonalDiskThickness/2), polygonalDiskRadius)
+        disk = DiskMadeOfDots(Point(0, 0, -polygonalDiskThickness/2),
+                              Point(0, 0, polygonalDiskThickness/2),
+                              polygonalDiskRadius)
         alpha = random.random() * 2 * math.pi
         beta = random.random() * 2 * math.pi
         gamma = random.random() * 2 * math.pi
@@ -78,7 +80,9 @@ def mainExfoliation(cubeSize=None, diskRadius=None, diskThickness=None):
                 break
         if not boxCross(disk) and flag == 0:
             disks.append(disk)
-        print('Try {0}, ready {1} of {2}'.format(attempt, len(disks), numberOfDisks))
+        elif flag == 0:
+            flag = 2
+        print('Try {0}, ready {1} of {2}, reason: {3}'.format(attempt, len(disks), numberOfDisks, flag))
         if attempt == maxAttempts:
             break
     for i, disk in enumerate(disks):
@@ -98,12 +102,29 @@ def mainExfoliation(cubeSize=None, diskRadius=None, diskThickness=None):
         disk.printToCSG(f, 'Disk' + str(i))
         matrixString += ' and not Disk' + str(i)
     f.write(matrixString + ';\n')
+    #f.write('tlo matrix -transparent -maxh=0.3;\n')    
     f.write('tlo matrix -transparent;\n')    
     f = open('matrices.txt', 'w')
     for i in range(len(disks) + 1):
         f.write('1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0\n')
     f = open('materials.txt', 'w')
-    C = [[[[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]], [[[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]], [[[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]]]
+    C = [
+         [
+          [[0, 0, 0], [0, 0, 0], [0, 0, 0]],
+          [[0, 0, 0], [0, 0, 0], [0, 0, 0]],
+          [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
+         ],
+         [
+          [[0, 0, 0], [0, 0, 0], [0, 0, 0]],
+          [[0, 0, 0], [0, 0, 0], [0, 0, 0]],
+          [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
+         ],
+         [
+          [[0, 0, 0], [0, 0, 0], [0, 0, 0]],
+          [[0, 0, 0], [0, 0, 0], [0, 0, 0]],
+          [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
+        ]
+       ]
     la = E_f * nu_f / (1.0 - 2 * nu_f) / (1 + nu_f)
     mu = E_f / 2 / (1 + nu_f)
     for particle in range(len(disks)):
