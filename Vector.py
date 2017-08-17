@@ -1,3 +1,6 @@
+from Point import Point
+
+
 class Vector():
     def __init__(self, dot1, dot2):
         self.values = {}
@@ -12,11 +15,13 @@ class Vector():
         self.values['endX'] += (otherVector.end() - otherVector.begin()).x
         self.values['endY'] += (otherVector.end() - otherVector.begin()).y
         self.values['endZ'] += (otherVector.end() - otherVector.begin()).z
+        return Vector(Point(0, 0, 0), Point(self.x(), self.y(), self.z()))
         
     def __sub__(self, otherVector):
         self.values['endX'] -= (otherVector.end() - otherVector.begin()).x
         self.values['endY'] -= (otherVector.end() - otherVector.begin()).y
         self.values['endZ'] -= (otherVector.end() - otherVector.begin()).z
+        return Vector(Point(0, 0, 0), Point(self.x(), self.y(), self.z()))
         
     def __mul__(self, coefficient):
         x = self.values['endX'] - self.values['beginX']
@@ -25,6 +30,7 @@ class Vector():
         self.values['endX'] = self.values['beginX'] + x * coefficient
         self.values['endX'] = self.values['beginY'] + y * coefficient
         self.values['endX'] = self.values['beginZ'] + z * coefficient
+        return Vector(Point(0, 0, 0), Point(self.x(), self.y(), self.z()))
         
     def __truediv__(self, coefficient):
         x = self.values['endX'] - self.values['beginX']
@@ -33,6 +39,10 @@ class Vector():
         self.values['endX'] = self.values['beginX'] + x / coefficient
         self.values['endX'] = self.values['beginY'] + y / coefficient
         self.values['endX'] = self.values['beginZ'] + z / coefficient
+        return Vector(Point(0, 0, 0), Point(self.x(), self.y(), self.z()))
+
+    def __str__(self):
+        return str(self.x()) + ' ' + str(self.y()) + ' ' + str(self.z())
         
     def begin(self):
         return Point(self.values['beginX'],
