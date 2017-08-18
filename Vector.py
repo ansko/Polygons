@@ -12,34 +12,30 @@ class Vector():
         self.values['endZ'] = dot2.z()
         
     def __add__(self, otherVector):
-        self.values['endX'] += (otherVector.end() - otherVector.begin()).x
-        self.values['endY'] += (otherVector.end() - otherVector.begin()).y
-        self.values['endZ'] += (otherVector.end() - otherVector.begin()).z
-        return Vector(Point(0, 0, 0), Point(self.x(), self.y(), self.z()))
+        return Vector(Point(0, 0, 0), Point(self.values['endX'] + (otherVector.end() - otherVector.begin()).x(),
+                                            self.values['endY'] + (otherVector.end() - otherVector.begin()).y(),
+                                            self.values['endZ'] + (otherVector.end() - otherVector.begin()).z()))
         
     def __sub__(self, otherVector):
-        self.values['endX'] -= (otherVector.end() - otherVector.begin()).x
-        self.values['endY'] -= (otherVector.end() - otherVector.begin()).y
-        self.values['endZ'] -= (otherVector.end() - otherVector.begin()).z
-        return Vector(Point(0, 0, 0), Point(self.x(), self.y(), self.z()))
+        return Vector(Point(0, 0, 0), Point(self.values['endX'] - (otherVector.end() - otherVector.begin()).x(),
+                                            self.values['endY'] - (otherVector.end() - otherVector.begin()).y(),
+                                            self.values['endZ'] - (otherVector.end() - otherVector.begin()).z()))
         
     def __mul__(self, coefficient):
         x = self.values['endX'] - self.values['beginX']
         y = self.values['endY'] - self.values['beginY']
         z = self.values['endZ'] - self.values['beginZ']
-        self.values['endX'] = self.values['beginX'] + x * coefficient
-        self.values['endX'] = self.values['beginY'] + y * coefficient
-        self.values['endX'] = self.values['beginZ'] + z * coefficient
-        return Vector(Point(0, 0, 0), Point(self.x(), self.y(), self.z()))
+        return Vector(Point(0, 0, 0), Point(self.values['beginX'] + x * coefficient,
+                                            self.values['beginY'] + y * coefficient,
+                                            self.values['beginZ'] + z * coefficient))
         
     def __truediv__(self, coefficient):
         x = self.values['endX'] - self.values['beginX']
         y = self.values['endY'] - self.values['beginY']
         z = self.values['endZ'] - self.values['beginZ']
-        self.values['endX'] = self.values['beginX'] + x / coefficient
-        self.values['endX'] = self.values['beginY'] + y / coefficient
-        self.values['endX'] = self.values['beginZ'] + z / coefficient
-        return Vector(Point(0, 0, 0), Point(self.x(), self.y(), self.z()))
+        return Vector(Point(0, 0, 0), Point(self.values['beginX'] + x / coefficient,
+                                            self.values['beginY'] + y / coefficient,
+                                            self.values['beginZ'] + z / coefficient))
 
     def __str__(self):
         return str(self.x()) + ' ' + str(self.y()) + ' ' + str(self.z())
