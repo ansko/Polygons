@@ -1,6 +1,10 @@
 import copy
+import sys
 
-EPSILON = 10 ** (-10)
+import pprint
+pprint=pprint.PrettyPrinter(indent=4).pprint
+
+from Options import Options
 
 
 def delta(i, j):
@@ -11,6 +15,7 @@ def delta(i, j):
 
 def det(M):
     l = len(M)
+ 
     if l == 0 or M is None:
         print('Error in determinant calculation!')
         return None
@@ -26,12 +31,12 @@ def det(M):
             newM.append(copy.deepcopy(M[j]))
             newM[j-1].pop(i)
         result += ((-1) ** i) * det(newM) * M[0][i]
-    #if result == 0:
-    #    pprint(M)
     return result
 
 
 def decompose(axeVector, basisVector1, basisVector2, point):
+    o = Options()
+    epsilon = o.getProperty('epsilon')
     x1 = axeVector.x()
     x2 = basisVector1.x()
     x3 = basisVector2.x()
@@ -45,10 +50,9 @@ def decompose(axeVector, basisVector1, basisVector2, point):
     b = point.y()
     c = point.z()
     determinant = det([[x1, x2, x3], [y1, y2, y3], [z1, z2, z3]])
-    if determinant < EPSILON:
-        #print('Determinant = 0!')
-        return None
-    #print(determinant)
+    if abs(determinant) < epsilon:
+        print('Determinant = ', determinant)
+        pprint([[x1, x2, x3], [y1, y2, y3], [z1, z2, z3]])
     alpha = det([[a, x2, x3], [b, y2, y3], [c, z2, z3]]) / determinant
     beta = det([[x1, a, x3], [y1, b, y3], [z1, c, z3]]) / determinant
     gamma = det([[x1, x2, a], [y1, y2, b], [z1, z2, c]]) / determinant
