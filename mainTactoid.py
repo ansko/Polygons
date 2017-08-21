@@ -47,11 +47,15 @@ def mainTactoid(cubeSize=None, diskRadius=None, diskThickness=None):
                               Point(0, 0, polygonalDiskThickness / 2),
                               polygonalDiskRadius)
         for stackI in range(0, int((tactoidStackNumber - 1) / 2)):
-            diskUp = DiskMadeOfDots(Point(0, 0, polygonalDiskThickness * (0.5 + stackI) + interlayerThickness * (1 + stackI)),
-                                    Point(0, 0, polygonalDiskThickness * (1.5 + stackI) + interlayerThickness * (1 + stackI)),
+            z1 = (polygonalDiskThickness * (0.5 + stackI) +
+                  interlayerThickness * (1 + stackI))
+            z2 = (polygonalDiskThickness * (1.5 + stackI) +
+                  interlayerThickness * (1 + stackI))
+            diskUp = DiskMadeOfDots(Point(0, 0, z1),
+                                    Point(0, 0, z2),
                                     polygonalDiskRadius)
-            diskDown = DiskMadeOfDots(Point(0, 0, -polygonalDiskThickness * (0.5 + stackI) - interlayerThickness * (1 + stackI)),
-                                      Point(0, 0, -polygonalDiskThickness * (1.5 + stackI) - interlayerThickness * (1 + stackI)),
+            diskDown = DiskMadeOfDots(Point(0, 0, -z1),
+                                      Point(0, 0, -z2),
                                       polygonalDiskRadius)
             newDisks.append(diskUp)
             newDisks.append(diskDown)
@@ -99,13 +103,16 @@ def mainTactoid(cubeSize=None, diskRadius=None, diskThickness=None):
         if flag == 0:
             for disk in newDisks:
                 disks.append(disk)
-        print('Try {0}, ready {1} of {2}'.format(attempt, len(disks) / tactoidStackNumber, numberOfDisks))
+        string = 'Try {0}, ready {1} of {2}'
+        overall = int(len(disks) / tactoidStackNumber)
+        print(string.format(attempt, overall, numberOfDisks))
         if attempt == maxAttempts:
             break
     matrixString = 'solid matrix = cell'
     f = open(fname, 'w')
     f.write('algebraic3d;\n')
-    f.write('solid cell = orthobrick(0, 0, 0; {0}, {0}, {0});\n'.format(cubeEdgeLength))
+    string = 'solid cell = orthobrick(0, 0, 0; {0}, {0}, {0});\n'
+    f.write(string.format(cubeEdgeLength))
     #f.write('tlo cell -transparent;\n')
     for i, disk in enumerate(disks):
         matrixString += ' and not Disk' + str(i)
@@ -129,7 +136,9 @@ def mainTactoid(cubeSize=None, diskRadius=None, diskThickness=None):
     print('Randomness along Y axe: {}'.format(randomnessY / len(disks)))
     print('Randomness along Z axe: {}'.format(randomnessZ / len(disks)))
     diskVolume = math.pi * polygonalDiskRadius**2 * polygonalDiskThickness
-    diskVolume += len(disks) / tactoidStackNumber * (tactoidStackNumber - 1) * math.pi * polygonalDiskRadius**2 * interlayerThickness
+    tactoidsNum = len(disks) / tactoidStackNumber
+    interlayerVolume = math.pi * polygonalDiskRadius**2 * interlayerThickness
+    diskVolume += tactoidsNum * (tactoidStackNumber - 1) * interlayerVolume
     allVolume = cubeEdgeLength**3
     part = len(disks) * diskVolume / allVolume
     print('Volume part of fillers is {}'.format(part))

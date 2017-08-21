@@ -43,7 +43,6 @@ def tactoidRecursive(disks=[], depths=None, depth=0):
     if numberOfDisks > 99:
         print('Too deep deep recursion is need to make the structure!')
         sys.exit()
-    timeToBreak = 0
     if len(disks) / tactoidStackNumber == numberOfDisks:
         printCSGMain(disks, fname)
         sys.exit()
@@ -57,12 +56,16 @@ def tactoidRecursive(disks=[], depths=None, depth=0):
                               polygonalDiskRadius,
                               verticesNumber)
         for stackI in range(0, int((tactoidStackNumber - 1) / 2)):
-            diskUp = DiskMadeOfDots(Point(0, 0, polygonalDiskThickness * (0.5 + stackI) + interlayerThickness * (1 + stackI)),
-                                    Point(0, 0, polygonalDiskThickness * (1.5 + stackI) + interlayerThickness * (1 + stackI)),
+            z1 = (polygonalDiskThickness * (0.5 + stackI) +
+                  interlayerThickness * (1 + stackI))
+            z2 = (polygonalDiskThickness * (1.5 + stackI) +
+                  interlayerThickness * (1 + stackI))
+            diskUp = DiskMadeOfDots(Point(0, 0, z1),
+                                    Point(0, 0, z2),
                                     polygonalDiskRadius,
                                     verticesNumber)
-            diskDown = DiskMadeOfDots(Point(0, 0, -polygonalDiskThickness * (0.5 + stackI) - interlayerThickness * (1 + stackI)),
-                                      Point(0, 0, -polygonalDiskThickness * (1.5 + stackI) - interlayerThickness * (1 + stackI)),
+            diskDown = DiskMadeOfDots(Point(0, 0, -z1),
+                                      Point(0, 0, -z2),
                                       polygonalDiskRadius,
                                       verticesNumber)
             newDisks.append(diskUp)
@@ -114,7 +117,9 @@ def tactoidRecursive(disks=[], depths=None, depth=0):
             for disk in newDisks:
                 disksTmp.append(disk)
         DEPTHSTMP[depth] += 1
-        print('Depth = {0}, ready {1} of {2} '.format(DEPTHSTMP, len(disksTmp) / tactoidStackNumber, numberOfDisks))
+        string = 'Depth = {0}, ready {1} of {2} '
+        tactoidsNumber = len(disksTmp) / tactoidStackNumber
+        print(string.format(DEPTHSTMP, tactoidsNumber, numberOfDisks))
         if inititalLength != len(disksTmp):
             disks = tactoidRecursive(disksTmp, DEPTHSTMP, depth + 1)
     return disks
