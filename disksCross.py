@@ -1,16 +1,23 @@
+import numpy as np
+
+import pprint
+pprint=pprint.PrettyPrinter(indent=4).pprint
+
 from Options import Options
+from Point import Point
 from Vector import Vector
 
 from planeLineIntersection import planeLineIntersection
-from utils import decompose
+from utils import decompose, det
 
 
 def disksCross(disk1, disk2):
     o = Options()
     polygonalDiskRadius = o.getProperty('polygonalDiskRadius')
     polygonalDiskThickness = o.getProperty('polygonalDiskThickness')
-    bigDistance = 2 * (polygonalDiskRadius**2 + polygonalDiskThickness**2)**0.5
-    smallDistance = polygonalDiskThickness * 2
+    bigDistance = 2 * (polygonalDiskRadius**2 + polygonalDiskThickness**2 / 4)**0.5
+    smallDistance = polygonalDiskThickness
+    epsilon = o.getProperty('epsilon')
     # check if centers are very far from each other
     c1 = disk1.center()
     c2 = disk2.center()
@@ -25,25 +32,31 @@ def disksCross(disk1, disk2):
         return True
     # more accurate checking
     # facet-facet intersection
-    axeVector = tc1 - bc1
-    for i in range(1, len(disk1.facets()) - 1):
-        facet1 = disk1.facets()[i]
-        basisVector1 = disk1.facets()[i - 1] / 2 + disk1.facets()[i] / 2
-        basisVector2 = disk1.facets()[i + 1] / 2 + disk1.facets()[i] / 2
+    # http://mathworld.wolfram.com/Line-PlaneIntersection.html
+    for i in range(len(disk1.facets())):
+        x1 = disk1.facets()[i]
+        x2 = disk1.facets()[i - 1]
+        x3 = c1
         for j in range(len(disk2.facets())):
-            facet2 = disk2.facets()[j]
-            facet21 = disk2.facets()[j - 1]
-            coefficients = decompose(axeVector, basisVector1, basisVector2, facet2 - facet1)
-            coefficients1 = decompose(axeVector, basisVector1, basisVector2, facet2 - facet21)
-            if coefficients1[0] * coefficients[0] <= 0:
-                if coefficients1[1] + coefficients1[2] < 1 or coefficients[1] + coefficients[2] < 1:
+            x4 = disk2.facets()[j]
+            x5 = disk2.facets()[j - 1]
+            numerator = det([
+                             [1, 1, 1, 1],
+                             [x1.x(), x2.x(), x3.x(), x4.x()],
+                             [x1.y(), x2.y(), x3.y(), x4.y()],
+                             [x1.z(), x2.z(), x3.z(), x4.z()]
+                            ])
+            denominator = det([
+                               [1, 1, 1, 0],
+                               [x1.x(), x2.x(), x3.x(), (x5 - x4).x()],
+                               [x1.y(), x2.y(), x3.y(), (x5 - x4).y()],
+                               [x1.z(), x2.z(), x3.z(), (x5 - x4).z()]
+                              ])
+            if abs(denominator) < epsilon:
+                pass
+            else:
+                t = numerator / denominator
+                if -1 <= t <= 1: # why -1 but not 0?
                     return True
-    # facet-top/bottom intersection
-    #for j in range(1, len(disk2.facets())):
-    #    top = planeLineIntersection(tc1, c1 - tc1, disk2.facets()[j - 1], disk2.facets()[j])
-    #    if top[0] and Vector(tc1, top[1]).length() < polygonalDiskRadius:
-    #        return True
-    #    bottom = planeLineIntersection(bc1, c1 - bc1, disk2.facets()[j - 1], disk2.facets()[j])
-    #    if bottom[0] and Vector(bc1, bottom[1]).length() < polygonalDiskRadius:
-    #        return True
+                              
     return False

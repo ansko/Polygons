@@ -46,9 +46,10 @@ def mainExfoliation(cubeSize=None, diskRadius=None, diskThickness=None):
     while len(disks) < numberOfDisks:
         attempt += 1
         disk = DiskMadeOfDots(Point(0, 0, -polygonalDiskThickness/2), Point(0, 0, polygonalDiskThickness/2), polygonalDiskRadius)
-        alpha = random.random() * 2 * math.pi
-        beta = random.random() * 2 * math.pi
-        gamma = random.random() * 2 * math.pi
+        coef = 2
+        alpha = random.random() * coef * math.pi
+        beta = random.random() * coef * math.pi
+        gamma = random.random() * coef * math.pi
         x = random.random() * cubeEdgeLength
         y = random.random() * cubeEdgeLength
         z = random.random() * cubeEdgeLength
