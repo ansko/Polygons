@@ -45,7 +45,8 @@ def mainExfoliation(cubeSize=None, diskRadius=None, diskThickness=None):
     attempt = 0
     while len(disks) < numberOfDisks:
         attempt += 1
-        disk = DiskMadeOfDots(Point(0, 0, -polygonalDiskThickness/2), Point(0, 0, polygonalDiskThickness/2), polygonalDiskRadius)
+        z = polygonalDiskThickness / 2
+        disk = DiskMadeOfDots(Point(0, 0, -z), Point(0, 0, z), polygonalDiskRadius)
         coef = 2
         alpha = random.random() * coef * math.pi
         beta = random.random() * coef * math.pi
@@ -104,7 +105,15 @@ def mainExfoliation(cubeSize=None, diskRadius=None, diskThickness=None):
     for i in range(len(disks) + 1):
         f.write('1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0\n')
     f = open('materials.txt', 'w')
-    C = [[[[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]], [[[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]], [[[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]]]
+    C = [[[[0, 0, 0], [0, 0, 0], [0, 0, 0]],
+          [[0, 0, 0], [0, 0, 0], [0, 0, 0]],
+          [[0, 0, 0], [0, 0, 0], [0, 0, 0]]],
+         [[[0, 0, 0], [0, 0, 0], [0, 0, 0]],
+          [[0, 0, 0], [0, 0, 0], [0, 0, 0]],
+          [[0, 0, 0], [0, 0, 0], [0, 0, 0]]],
+         [[[0, 0, 0], [0, 0, 0], [0, 0, 0]],
+          [[0, 0, 0], [0, 0, 0], [0, 0, 0]],
+          [[0, 0, 0], [0, 0, 0], [0, 0, 0]]]]
     la = E_f * nu_f / (1.0 - 2 * nu_f) / (1 + nu_f)
     mu = E_f / 2 / (1 + nu_f)
     for particle in range(len(disks)):
