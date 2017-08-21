@@ -22,7 +22,7 @@ from printCSGMain import printCSGMain
 from utils import delta, det, decompose, orderParameter
 
 
-def mainIntercalation2(cubeSize=10, diskRadius=1, diskThickness=0.1):
+def mainIntercalation(cubeSize=None, diskRadius=None, diskThickness=None):
     o = Options()
     cubeEdgeLength = o.getProperty('cubeEdgeLength')
     numberOfDisks = o.getProperty('numberOfDisks')
@@ -35,9 +35,8 @@ def mainIntercalation2(cubeSize=10, diskRadius=1, diskThickness=0.1):
     E_f = o.getProperty('E_f')
     nu_f = o.getProperty('nu_f')
     fname = o.getProperty('fname')
-    interlayerThickness = o.getProperty('interlayerThickness')
     intercalatedStackNumber = o.getProperty('intercalatedStackNumber')
-    intercalatedInterlayerThickness = o.getProperty('intercalatedInterlayerThickness')
+    interlayerThickness = o.getProperty('intercalatedInterlayerThickness')
 
     disks = []
     attempt = 0
@@ -48,15 +47,18 @@ def mainIntercalation2(cubeSize=10, diskRadius=1, diskThickness=0.1):
                               Point(0, 0, polygonalDiskThickness / 2),
                               polygonalDiskRadius)
         for stackI in range(0, int((intercalatedStackNumber - 1) / 2)):
-            diskUp = DiskMadeOfDots(Point(0, 0, polygonalDiskThickness * (0.5 + stackI) + intercalatedInterlayerThickness * (1 + stackI)),
-                                    Point(0, 0, polygonalDiskThickness * (1.5 + stackI) + intercalatedInterlayerThickness * (1 + stackI)),
+            z1 = (polygonalDiskThickness * (0.5 + stackI) +
+                  interlayerThickness * (1 + stackI))
+            z2 = (polygonalDiskThickness * (1.5 + stackI) +
+                  interlayerThickness * (1 + stackI))
+            diskUp = DiskMadeOfDots(Point(0, 0, z1),
+                                    Point(0, 0, z2),
                                     polygonalDiskRadius)
-            diskDown = DiskMadeOfDots(Point(0, 0, -polygonalDiskThickness * (0.5 + stackI) - intercalatedInterlayerThickness * (1 + stackI)),
-                                      Point(0, 0, -polygonalDiskThickness * (1.5 + stackI) - intercalatedInterlayerThickness * (1 + stackI)),
+            diskDown = DiskMadeOfDots(Point(0, 0, -z1),
+                                      Point(0, 0, -z2),
                                       polygonalDiskRadius)
             newDisks.append(diskUp)
             newDisks.append(diskDown)
-            pass
         newDisks.append(disk)
         alpha = random.random() * 2 * math.pi
         beta = random.random() * 2 * math.pi
@@ -100,13 +102,16 @@ def mainIntercalation2(cubeSize=10, diskRadius=1, diskThickness=0.1):
         if flag == 0:
             for disk in newDisks:
                 disks.append(disk)
-        print('Try {0}, ready {1} of {2}'.format(attempt, len(disks) / intercalatedStackNumber, numberOfDisks))
+        ready = int(len(disks) / intercalatedStackNumber)
+        string = 'Try {0}, ready {1} of {2}'
+        print(string.format(attempt, ready, numberOfDisks))
         if attempt == maxAttempts:
             break
     matrixString = 'solid matrix = cell'
     f = open(fname, 'w')
     f.write('algebraic3d;\n')
-    f.write('solid cell = orthobrick(0, 0, 0; {0}, {0}, {0});\n'.format(cubeEdgeLength))
+    string = 'solid cell = orthobrick(0, 0, 0; {0}, {0}, {0});\n'
+    f.write(string.format(cubeEdgeLength))
     #f.write('tlo cell -transparent;\n')
     for i, disk in enumerate(disks):
         matrixString += ' and not Disk' + str(i)
@@ -135,4 +140,4 @@ def mainIntercalation2(cubeSize=10, diskRadius=1, diskThickness=0.1):
     print('Volume part of fillers is {}'.format(part))
 
 
-mainIntercalation2()
+mainIntercalation()
