@@ -42,8 +42,8 @@ class DiskMadeOfDots():
         dot1 = self.values['bottomCenter']
         dot2 = self.values['topCenter']
         return Vector(Point(0, 0, 0), Point(dot2.x() - dot1.x(),
-                                            dot2.y() - dot2.y(),
-                                            dot2.z() - dot2.z()))
+                                            dot2.y() - dot1.y(),
+                                            dot2.z() - dot1.z()))
                                             
     def bottomCenter(self):
         return self.values['bottomCenter']
