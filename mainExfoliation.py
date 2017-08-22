@@ -9,6 +9,7 @@ import sys
 import pprint
 pprint=pprint.PrettyPrinter(indent=4).pprint
 
+from CSGPrinter import CSGPrinter
 from DiskMadeOfDots import DiskMadeOfDots
 from Options import Options
 from PlaneMadeOfDots import PlaneMadeOfDots
@@ -36,11 +37,7 @@ def mainExfoliation(cubeSize=None, diskRadius=None, diskThickness=None):
     nu_f = o.getProperty('nu_f')
     fname = o.getProperty('fname')
 
-    matrixString = 'solid matrix = cell'
-    f = open(fname, 'w')
-    f.write('algebraic3d;\n')
-    f.write('solid cell = orthobrick(0, 0, 0; {0}, {0}, {0});\n'.format(cubeEdgeLength))
-    #f.write('tlo cell -transparent;\n')
+    csgPrinter = CSGPrinter(fname)
     disks = []
     attempt = 0
     while len(disks) < numberOfDisks:
@@ -79,6 +76,7 @@ def mainExfoliation(cubeSize=None, diskRadius=None, diskThickness=None):
                 flag = 1
                 break
         if not boxCross(disk) and flag == 0:
+            disk.setSelfNumber(len(disks))
             disks.append(disk)
         print('Try {0}, ready {1} of {2}'.format(attempt, len(disks), numberOfDisks))
         if attempt == maxAttempts:
@@ -97,44 +95,8 @@ def mainExfoliation(cubeSize=None, diskRadius=None, diskThickness=None):
         randomnessX += orderParameter(cosThetaX)
         randomnessY += orderParameter(cosThetaY)
         randomnessZ += orderParameter(cosThetaZ)
-        disk.printToCSG(f, 'Disk' + str(i))
-        matrixString += ' and not Disk' + str(i)
-    f.write(matrixString + ';\n')
-    f.write('tlo matrix -transparent;\n')    
-    f = open('matrices.txt', 'w')
-    for i in range(len(disks) + 1):
-        f.write('1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0\n')
-    f = open('materials.txt', 'w')
-    C = [[[[0, 0, 0], [0, 0, 0], [0, 0, 0]],
-          [[0, 0, 0], [0, 0, 0], [0, 0, 0]],
-          [[0, 0, 0], [0, 0, 0], [0, 0, 0]]],
-         [[[0, 0, 0], [0, 0, 0], [0, 0, 0]],
-          [[0, 0, 0], [0, 0, 0], [0, 0, 0]],
-          [[0, 0, 0], [0, 0, 0], [0, 0, 0]]],
-         [[[0, 0, 0], [0, 0, 0], [0, 0, 0]],
-          [[0, 0, 0], [0, 0, 0], [0, 0, 0]],
-          [[0, 0, 0], [0, 0, 0], [0, 0, 0]]]]
-    la = E_f * nu_f / (1.0 - 2 * nu_f) / (1 + nu_f)
-    mu = E_f / 2 / (1 + nu_f)
-    for particle in range(len(disks)):
-        for i in range(3):
-            for j in range(3):
-                for k in range(3):
-                    for l in range(3):
-                        brackets = delta(i, k) * delta(j, l)
-                        brackets += delta(i, l) * delta(j, k)
-                        C[i][j][k][l] = (la * delta(i, j) * delta(k, l) + mu * brackets)     
-                        f.write(str(C[i][j][k][l]) + ' ')
-    la = E_m * nu_m / (1.0 - 2 * nu_m) / (1 + nu_m)
-    mu = E_m / 2 / (1 + nu_m)
-    for i in range(3):
-        for j in range(3):
-            for k in range(3):
-                for l in range(3):
-                    brackets = delta(i, k) * delta(j, l)
-                    brackets += delta(i, l) * delta(j, k)
-                    C[i][j][k][l] = (la * delta(i, j) * delta(k, l) + mu * brackets)     
-                    f.write(str(C[i][j][k][l]) + ' ')
+        csgPrinter.printDisk(disk)
+    csgPrinter.printMatrix()
     print('Randomness along X axe: {}'.format(randomnessX / len(disks)))
     print('Randomness along Y axe: {}'.format(randomnessY / len(disks)))
     print('Randomness along Z axe: {}'.format(randomnessZ / len(disks)))

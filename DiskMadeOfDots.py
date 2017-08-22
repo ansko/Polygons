@@ -18,10 +18,9 @@ class DiskMadeOfDots():
             diskCenter = Point(dot1.x() / 2 + dot2.x() / 2,
                                dot1.y() / 2 + dot2.y() / 2,
                                dot1.z() / 2 + dot2.z() / 2)
-            dot = diskCenter + Point(radius * math.cos(2 * math.pi * i /
-                                                       self.values['verticesNumber']),
-                                     radius * math.sin(2 * math.pi * i /
-                                                       self.values['verticesNumber']),
+            centralAngle = 2 * math.pi * i / self.values['verticesNumber']
+            dot = diskCenter + Point(radius * math.cos(centralAngle),
+                                     radius * math.sin(centralAngle),
                                      0)
             self.values['facetsCenters'].append(dot)
 
@@ -81,29 +80,9 @@ class DiskMadeOfDots():
             dot.setX(x)
             dot.setY(y)
             dot.setZ(z)
+            
+    def setSelfNumber(self, number):
+        self.values['number'] = number
         
-    
-    def printToCSG(self, f, solidName):
-        f.write('solid ' + solidName + ' = ')
-        dot1 = self.values['bottomCenter']
-        dot2 = self.values['topCenter']
-        diskCenter = Point(dot1.x() / 2 + dot2.x() / 2,
-                           dot1.y() / 2 + dot2.y() / 2,
-                           dot1.z() / 2 + dot2.z() / 2)
-        for facet in self.values['facetsCenters']:
-            f.write('plane(')
-            facet.printToCSG(f)
-            f.write('; ')
-            (facet - diskCenter).printToCSG(f)
-            f.write(') and ')
-        f.write('plane(')
-        dot1.printToCSG(f)
-        f.write(';')
-        (dot1 - diskCenter).printToCSG(f)
-        f.write(') and plane(')
-        dot2.printToCSG(f)
-        f.write(';')
-        (dot2 - diskCenter).printToCSG(f)
-        f.write(');\n')
-        #f.write('tlo ' + solidName + ' -maxh=0.1;\n')
-        f.write('tlo ' + solidName + ';\n')
+    def number(self):
+        return str(self.values['number'])
